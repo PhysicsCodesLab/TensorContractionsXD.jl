@@ -13,8 +13,12 @@ makedocs(;
         canonical="https://PhysicsCodesLab.github.io/TensorOperationsXD.jl",
         assets=String[],
     ),
-    pages=[
-        "Home" => "index.md",
+    pages = [
+        "Home" => ["index.md",
+                    "indexnotation.md",
+                    "functions.md",
+                    "cache.md",
+                    "implementation.md"]
     ],
 )
 
