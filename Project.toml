@@ -13,7 +13,7 @@ Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67"
 TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 
 [compat]
-CUDA = "3.2"
+CUDA = "3"
 julia = "1.6"
 
 [extras]
