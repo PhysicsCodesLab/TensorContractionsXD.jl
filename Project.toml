@@ -13,11 +13,11 @@ Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67"
 TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
 
 [compat]
-Strided = "1"
-TupleTools = "1.1"
+CUDA = "1,2,3"
 LRUCache = "1"
 Requires = "0.5,1"
-CUDA = "1,2,3"
+Strided = "1"
+TupleTools = "1.1"
 julia = "1.6"
 
 [extras]
