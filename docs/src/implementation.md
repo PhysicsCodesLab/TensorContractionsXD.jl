@@ -40,7 +40,7 @@ applied recursively if `a` contains more primes.
 
 The implementation for detecting tensors and indices (`istensor`, `isindex`) and actually
 converting them to a useful format (`maketensor`, `makeindex`) are found in
-`src/indexnotation/tensorexpressions.jl`. In particular, `maketensor` will return the
+`src/indexnotation/varifiers.jl`. In particular, `maketensor` will return the
 indexed object, which is just `esc(args[1])`, the list of left indices and the list of right
 indices.
 
@@ -56,7 +56,7 @@ a flag (`Bool`) that indicates whether the object needs to be conjugated (`true`
 (`false`).
 
 The file
-[`src/indexnotation/tensorexpressions.jl`](https://github.com/Jutho/TensorOperationsXD.jl/blob/master/src/indexnotation/tensorexpressions.jl)
+[`src/indexnotation/verifiers.jl`](https://github.com/PhysicsCodesLab/TensorOperationsXD.jl/blob/master/src/indexnotation/varifiers.jl)
 also contains simple methods to detect assignment (`isassignment`) into existing objects
 (i.e. `=`, `+=` and `-=`) or so-called definitions (`isdefinition`), that create a new
 object (via `:=` or its Unicode variant `≔`, obtained as `\coloneq + TAB`). The function
