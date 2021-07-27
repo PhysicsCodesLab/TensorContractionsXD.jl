@@ -1,7 +1,10 @@
-# Verifiers: tools to verify if an expression is a valid tensor expression of certain type
-
-# test for a valid index
 const prime = Symbol("'")
+
+"""
+    isindex(ex)
+
+Check if the input `ex` is a valid index for a tensor.
+"""
 function isindex(ex)
     if isa(ex, Symbol) || isa(ex, Int)
         return true
@@ -12,13 +15,23 @@ function isindex(ex)
     end
 end
 
-# test for a simple tensor object indexed by valid indices
+"""
+    istensor(ex::Expr)
+
+Check if the input `ex` is a tensor object with valid indices. The possible forms of the
+tensor could be:
+1. `A[]` with head `:ref`
+1. `A[a, b, c]` with head `:ref`
+2. `A[a b c]` with head `:typed_hcat`
+3. `A[a b; c d]` with head `:typed_vcat`
+where `A` can itself be an expression, such as `A[1:2:end, :][a, b, c]`.
+"""
 istensor(ex) = false
 function istensor(ex::Expr)
     if ex.head == :ref || ex.head == :typed_hcat
         if length(ex.args) == 1
             return true
-        elseif isa(ex.args[2], Expr) && ex.args[2].head == :parameters
+        elseif isa(ex.args[2], Expr) && ex.args[2].head == :parameters # how to realize this case ???
             return all(isindex, ex.args[2].args) || all(isindex, ex.args[3:end])
         else
             return all(isindex, ex.args[2:end])
@@ -40,7 +53,17 @@ function istensor(ex::Expr)
     return false
 end
 
-# test for a generalized tensor, i.e. with scalar multiplication and conjugation
+"""
+    isgeneraltensor(ex::Expr)
+
+Check if the input `ex` is a general tensor in one of the following forms:
+1. `ex` itself is a tensor
+2. `+tensor` or `-tensor`
+3. `conj(tensor)`, or `adjoint(tensor)`, or `tensor'`, or `transpose(tensor)`
+4. `α * tensor` or `tensor * α`, where `α` is a scalar
+5. `α\tensor` or `tensor/α`, where `α` is a scalar
+and any composition of them.
+"""
 isgeneraltensor(ex) = false
 function isgeneraltensor(ex::Expr)
     if istensor(ex)
@@ -88,13 +111,11 @@ function isgeneraltensor(ex::Expr)
     return false
 end
 
-function hastraceindices(ex)
-    obj, leftind, rightind, = decomposegeneraltensor(ex)
-    allind = vcat(leftind, rightind)
-    return length(allind) != length(unique(allind))
-end
+"""
+    isscalarexpr(ex::Expr)
 
-# test for a scalar expression, i.e. no indices
+Check if the input `ex` is a scalar expression with no indices.
+"""
 function isscalarexpr(ex::Expr)
     if ex.head == :call && ex.args[1] == :scalar
         return istensorexpr(ex.args[2])
@@ -108,15 +129,12 @@ isscalarexpr(ex::Symbol) = true
 isscalarexpr(ex::Number) = true
 isscalarexpr(ex) = true
 
-# test for a tensor contraction expression
-function istensorcontraction(ex)
-    if isa(ex, Expr) && ex.head == :call && ex.args[1] == :*
-        return count(istensorexpr, ex.args[2:end]) >= 2
-    end
-    return false
-end
+"""
+    istensorexpr(ex)
 
-# test for a tensor expression, i.e. something that can be evaluated to a tensor
+Check if the input `ex` is a tensor expression, i.e. something that can be evaluated to a
+tensor.
+"""
 function istensorexpr(ex)
     if isgeneraltensor(ex)
         return true
@@ -146,8 +164,43 @@ function istensorexpr(ex)
     return false
 end
 
-# test for assignment (copy into existing tensor) or definition (create new tensor)
+"""
+    hastraceindices(ex)
+
+Check if the input tensor `ex` has indices that needed to be contracted within the tensor,
+i.e., whether any trace operation is applied on the tensor.
+"""
+function hastraceindices(ex)
+    obj, leftind, rightind, = decomposegeneraltensor(ex)
+    allind = vcat(leftind, rightind)
+    return length(allind) != length(unique(allind))
+end
+
+"""
+    istensorcontraction(ex)
+
+Check if the input `ex` is an expression for a tensor contraction operation in the form such
+as `A[a b]*B[c a]*...`.
+"""
+function istensorcontraction(ex)
+    if isa(ex, Expr) && ex.head == :call && ex.args[1] == :*
+        return count(istensorexpr, ex.args[2:end]) >= 2
+    end
+    return false
+end
+
+"""
+    isassignment(ex)
+
+Check if the input `ex` is an assignment to an existing tensor.
+"""
 isassignment(ex) = false
-isdefinition(ex) = false
 isassignment(ex::Expr) = ex.head == :(=) || ex.head == :(+=) || ex.head == :(-=)
+
+"""
+    isdefinition(ex)
+
+Check if the input `ex` is an expression that create a new tensor by definition.
+"""
+isdefinition(ex) = false
 isdefinition(ex::Expr) = (ex.head == :(:=) || ex.head == :(≔)) && istensor(ex.args[1])

@@ -1,6 +1,11 @@
 # Tools to analyze parts of tensor expressions and extract information
+"""
+    decomposetensor(ex::Expr)
 
-# analyze tensor expressions and extract information
+Decompose a tensor expression into the tensor object, left indices, and right indices, where
+the left indices correspond to the codomain and right indices correspond to the domain if we
+treat the tensor as a tensor map.
+"""
 function decomposetensor(ex::Expr)
     istensor(ex) || throw(ArgumentError("not a valid tensor: $ex"))
     if ex.head == :ref || ex.head == :typed_hcat
@@ -26,10 +31,37 @@ function decomposetensor(ex::Expr)
     end
 end
 
+"""
+    gettensorobject(ex)
+
+Get the name or object of the tensor.
+"""
 gettensorobject(ex) = decomposetensor(ex)[1]
+
+"""
+    getleftindices(ex)
+
+Get the left indices of a tensor that correspond to the codomain.
+"""
 getleftindices(ex) = decomposetensor(ex)[2]
+
+"""
+    getrightindices(ex)
+
+Get the right indices of a tensor that correspond to the domain.
+"""
 getrightindices(ex) = decomposetensor(ex)[3]
 
+
+"""
+    decomposegeneraltensor(ex)
+
+Decompose a general tensor and return `(object, leftind, rightind, α, conj)`, where `α` is
+the possible scalar that multiplied with the tensor, and `conj` is a symbol that denote
+whether we need to apply complex conjugation on that tensor.
+
+??? Why there is no cases with `:adjoint` and `:transpose`.
+"""
 function decomposegeneraltensor(ex)
     if istensor(ex)
         object, leftind, rightind = decomposetensor(ex)
@@ -64,7 +96,11 @@ function decomposegeneraltensor(ex)
     throw(ArgumentError("not a valid generalized tensor expression $ex"))
 end
 
-# get left and right hand side from an expression or definition
+"""
+    getlhs(ex::Expr)
+
+Get the left hand side of an assignment or definition expression.
+"""
 function getlhs(ex::Expr)
     if ex.head in (:(=), :(+=), :(-=), :(:=), :(≔))
         return ex.args[1]
@@ -72,6 +108,12 @@ function getlhs(ex::Expr)
         throw(ArgumentError("invalid assignment or definition $ex"))
     end
 end
+
+"""
+    getrhs(ex::Expr)
+
+Get the right hand side of an assignment or definition expression.
+"""
 function getrhs(ex::Expr)
     if ex.head in (:(=), :(+=), :(-=), :(:=), :(≔))
         return ex.args[2]
@@ -80,7 +122,12 @@ function getrhs(ex::Expr)
     end
 end
 
-# get all the tensor objects in a tensor expression (not a definition or assignment)
+"""
+    gettensorobjects(ex)
+
+Return a list of all the tensor objects in a tensor expression (not a definition or
+assignment).
+"""
 function gettensorobjects(ex)
     if istensor(ex)
         Any[gettensorobject(ex)]
@@ -95,7 +142,12 @@ function gettensorobjects(ex)
     end
 end
 
-# get all the existing tensor objects which are inputs (i.e. appear in the rhs of assignments and definitions)
+"""
+    getinputtensorobjects(ex)
+
+Return a list of all the existing tensor objects which are inputs (i.e. appear in the rhs
+of assignments and definitions).
+"""
 function getinputtensorobjects(ex)
     list = Any[]
     if isdefinition(ex)
@@ -125,7 +177,13 @@ function getinputtensorobjects(ex)
     end
     return unique!(list)
 end
-# get all the existing tensor objects which are outputs (i.e. appear in the lhs of assignments)
+
+"""
+    getoutputtensorobjects(ex)
+
+Return a list of all the existing tensor objects which are outputs (i.e. appear in the lhs
+of assignments).
+"""
 function getoutputtensorobjects(ex)
     list = Any[]
     if isassignment(ex)
@@ -147,7 +205,13 @@ function getoutputtensorobjects(ex)
     end
     return unique!(list)
 end
-# get all the existing tensor objects which are newly created (i.e. appear in the lhs of definition)
+
+"""
+    getnewtensorobjects(ex)
+
+Return a list of all the existing tensor objects which are newly created (i.e. appear in
+the lhs of definition).
+"""
 function getnewtensorobjects(ex)
     list = Any[]
     if isdefinition(ex)
@@ -165,7 +229,12 @@ function getnewtensorobjects(ex)
     return unique!(list)
 end
 
-# for any tensor expression, get the list of uncontracted indices that would remain after evaluating that expression
+"""
+    getindices(ex::Expr)
+
+For any tensor expression, get the list of uncontracted indices that would remain after
+evaluating that expression.
+"""
 function getindices(ex::Expr)
     if istensor(ex)
         _,leftind,rightind = decomposetensor(ex)
@@ -190,7 +259,11 @@ function getindices(ex::Expr)
 end
 getindices(ex) = Any[]
 
-# get all unique indices appearing in a tensor expression
+"""
+    getallindices(ex::Expr)
+
+Return a list of all indices appearing in a tensor expression and only once for each.
+"""
 function getallindices(ex::Expr)
     if istensor(ex)
         _,leftind,rightind = decomposetensor(ex)
@@ -199,29 +272,6 @@ function getallindices(ex::Expr)
         return getallindices(getrhs(ex))
     else
         return unique!(mapreduce(getallindices, vcat, ex.args))
-    # elseif istensorexpr(ex)
-    #     return unique!(mapreduce(getallindices, vcat, ex.args))
-    # else
-    #     return Any[]
     end
 end
 getallindices(ex) = Any[]
-
-# # auxiliary routine
-# function unique2(itr)
-#     out = collect(itr)
-#     i = 1
-#     while i < length(out)
-#         inext = findnext(isequal(out[i]), out, i+1)
-#         if inext == nothing
-#             i += 1
-#             continue
-#         end
-#         while inext !== nothing
-#             deleteat!(out, inext)
-#             inext = findnext(isequal(out[i]), out, i+1)
-#         end
-#         deleteat!(out, i)
-#     end
-#     out
-# end

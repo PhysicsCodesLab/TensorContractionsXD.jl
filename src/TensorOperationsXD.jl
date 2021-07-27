@@ -8,6 +8,8 @@ using LinearAlgebra: mul!, BLAS.BlasFloat
 using LRUCache
 using Requires
 
+import Base.tail
+
 # Exports
 #---------
 # export macro API

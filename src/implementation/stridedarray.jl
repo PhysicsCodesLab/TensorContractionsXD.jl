@@ -16,6 +16,8 @@ similarstructure_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple,
                                 A::AbstractArray, CA::Symbol = :N) =
     _similarstructure_from_indices(T, (p1..., p2...), A)
 
+_similarstructure_from_indices(T, ind, A::AbstractArray) = map(n->size(A, n), ind)
+
 """
     similarstructure_from_indices(T, indoA, indoB, indleft, indright, A, B, conjA = :N, conjB= :N)
 
@@ -33,12 +35,25 @@ similarstructure_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
                                 CA::Symbol = :N, CB::Symbol = :N) =
     _similarstructure_from_indices(T, poA, poB, (p1..., p2...), A, B)
 
+function _similarstructure_from_indices(T, poA::IndexTuple, poB::IndexTuple,
+        ind::IndexTuple, A::AbstractArray, B::AbstractArray)
+
+    oszA = map(n->size(A,n), poA)
+    oszB = map(n->size(B,n), poB)
+    sz = let osz = (oszA..., oszB...)
+        map(n->osz[n], ind)
+    end
+    return sz
+end
+
 """
     scalar(C)
 
 Returns the single element of a tensor-like object with zero indices or dimensions.
 """
 function scalar end
+
+scalar(C::AbstractArray) = ndims(C)==0 ? C[] : throw(DimensionMismatch())
 
 """
     add!(α, A, conjA, β, C, indleft, indright)
@@ -51,60 +66,6 @@ if `conjA == :C` or the identity map if `conjA == :N` (default). Together,
 """
 add!(α, A::AbstractArray, CA::Symbol, β, C::AbstractArray, indleft::IndexTuple,
         indright::IndexTuple) = add!(α, A, CA, β, C, (indleft..., indright...))
-
-"""
-    trace!(α, A, conjA, β, C, indleft, indright, cind1, cind2)
-
-Implements `C = β*C+α*partialtrace(op(A))` where `A` is permuted and partially traced,
-such that the left (right) indices of `C` correspond to the indices `indleft` (`indright`)
-of `A`, and indices `cindA1` are contracted with indices `cindA2`. Furthermore, `op` is
-`conj` if `conjA == :C` or the identity map if `conjA=:N` (default). Together,
-`(indleft..., indright..., cind1, cind2)` is a permutation of 1 to the number of indices
-(dimensions) of `A`.
-"""
-trace!(α, A::AbstractArray, CA::Symbol, β, C::AbstractArray, indleft::IndexTuple,
-        indright::IndexTuple, cind1::IndexTuple, cind2::IndexTuple) =
-    trace!(α, A, CA, β, C, (indleft..., indright...), cind1, cind2)
-
-"""
-    contract!(α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indleft, indright, syms = nothing)
-
-Implements `C = β*C+α*contract(opA(A),opB(B))` where `A` and `B` are contracted, such that
-the indices `cindA` of `A` are contracted with indices `cindB` of `B`. The open indices
-`oindA` of `A` and `oindB` of `B` are permuted such that `C` has left (right) indices
-corresponding to indices `indleft` (`indright`) out of `(oindA..., oindB...)`. The
-operation `opA` (`opB`) acts as `conj` if `conjA` (`conjB`) equal `:C` or as the identity
-map if `conjA` (`conjB`) equal `:N`. Together, `(oindA..., cindA...)` is a permutation of
-1 to the number of indices of `A` and `(oindB..., cindB...)` is a permutation of 1 to the
-number of indices of `C`. Furthermore, `length(cindA) == length(cindB)`,
-`length(oindA)+length(oindB)` equals the number of indices of `C` and `(indleft...,
-indright...)` is a permutation of `1` ot the number of indices of `C`.
-
-The final argument `syms` is optional and can be either `nothing`, or a tuple of three
-symbols, which are used to identify temporary objects in the cache to be used for permuting
-`A`, `B` and `C` so as to perform the contraction as a matrix multiplication.
-"""
-contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
-        β, C::AbstractArray, oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple,
-        cindB::IndexTuple, indleft::IndexTuple, indright::IndexTuple, syms = nothing) =
-    contract!(α, A, CA, B, CB, β, C,
-                oindA, cindA, oindB, cindB, (indleft..., indright...), syms)
-
-# actual implementations for AbstractArray with ind = (indleft..., indright...)
-_similarstructure_from_indices(T, ind, A::AbstractArray) = map(n->size(A, n), ind)
-
-function _similarstructure_from_indices(T, poA::IndexTuple, poB::IndexTuple,
-        ind::IndexTuple, A::AbstractArray, B::AbstractArray)
-
-    oszA = map(n->size(A,n), poA)
-    oszB = map(n->size(B,n), poB)
-    sz = let osz = (oszA..., oszB...)
-        map(n->osz[n], ind)
-    end
-    return sz
-end
-
-scalar(C::AbstractArray) = ndims(C)==0 ? C[] : throw(DimensionMismatch())
 
 function add!(α, A::AbstractArray{<:Any, N}, CA::Symbol,
         β, C::AbstractArray{<:Any, N}, indCinA) where {N}
@@ -136,6 +97,20 @@ end
 _add!(α, A::AbstractStridedView{<:Any,N},
         β, C::AbstractStridedView{<:Any,N}, indCinA::IndexTuple{N}) where N =
     LinearAlgebra.axpby!(α, permutedims(A, indCinA), β, C)
+
+"""
+    trace!(α, A, conjA, β, C, indleft, indright, cind1, cind2)
+
+Implements `C = β*C+α*partialtrace(op(A))` where `A` is permuted and partially traced,
+such that the left (right) indices of `C` correspond to the indices `indleft` (`indright`)
+of `A`, and indices `cindA1` are contracted with indices `cindA2`. Furthermore, `op` is
+`conj` if `conjA == :C` or the identity map if `conjA=:N` (default). Together,
+`(indleft..., indright..., cind1, cind2)` is a permutation of 1 to the number of indices
+(dimensions) of `A`.
+"""
+trace!(α, A::AbstractArray, CA::Symbol, β, C::AbstractArray, indleft::IndexTuple,
+        indright::IndexTuple, cind1::IndexTuple, cind2::IndexTuple) =
+    trace!(α, A, CA, β, C, (indleft..., indright...), cind1, cind2)
 
 function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArray{<:Any, NC},
         indCinA, cindA1, cindA2) where {NA,NC}
@@ -211,6 +186,30 @@ function _trace!(α, A::AbstractStridedView,
     end
     return C
 end
+
+"""
+    contract!(α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indleft, indright, syms = nothing)
+
+Implements `C = β*C+α*contract(opA(A),opB(B))` where `A` and `B` are contracted, such that
+the indices `cindA` of `A` are contracted with indices `cindB` of `B`. The open indices
+`oindA` of `A` and `oindB` of `B` are permuted such that `C` has left (right) indices
+corresponding to indices `indleft` (`indright`) out of `(oindA..., oindB...)`. The
+operation `opA` (`opB`) acts as `conj` if `conjA` (`conjB`) equal `:C` or as the identity
+map if `conjA` (`conjB`) equal `:N`. Together, `(oindA..., cindA...)` is a permutation of
+1 to the number of indices of `A` and `(oindB..., cindB...)` is a permutation of 1 to the
+number of indices of `C`. Furthermore, `length(cindA) == length(cindB)`,
+`length(oindA)+length(oindB)` equals the number of indices of `C` and `(indleft...,
+indright...)` is a permutation of `1` ot the number of indices of `C`.
+
+The final argument `syms` is optional and can be either `nothing`, or a tuple of three
+symbols, which are used to identify temporary objects in the cache to be used for permuting
+`A`, `B` and `C` so as to perform the contraction as a matrix multiplication.
+"""
+contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
+        β, C::AbstractArray, oindA::IndexTuple, cindA::IndexTuple, oindB::IndexTuple,
+        cindB::IndexTuple, indleft::IndexTuple, indright::IndexTuple, syms = nothing) =
+    contract!(α, A, CA, B, CB, β, C,
+                oindA, cindA, oindB, cindB, (indleft..., indright...), syms)
 
 function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbol,
         β, C::AbstractArray,

@@ -1,38 +1,8 @@
+"""
+    instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
 
-function instantiate_eltype(ex::Expr)
-    if istensor(ex)
-        obj,_,_ = decomposetensor(ex)
-        return Expr(:call, :eltype, obj)
-    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
-        if length(ex.args) > 2
-            return Expr(:call, :promote_type, map(instantiate_eltype, ex.args[2:end])...)
-        else
-            return instantiate_eltype(ex.args[2])
-        end
-    elseif ex.head == :call && ex.args[1] == :conj
-        return instantiate_eltype(ex.args[2])
-    elseif isscalarexpr(ex)
-        return :(typeof($ex))
-    else
-        # return :(eltype($ex)) # would probably lead to doing the same operation twice
-        throw(ArgumentError("unable to determine eltype"))
-    end
-end
-instantiate_eltype(ex) = Expr(:call,:typeof, ex)
 
-function instantiate_scalar(ex::Expr)
-    if ex.head == :call && ex.args[1] == :scalar
-        @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
-        return :(scalar($(instantiate(nothing, 0, ex.args[2], 1, [], [], true))))
-    elseif ex.head == :call
-        return Expr(ex.head, ex.args[1], map(instantiate_scalar, ex.args[2:end])...)
-    else
-        return Expr(ex.head, map(instantiate_scalar, ex.args)...)
-    end
-end
-instantiate_scalar(ex::Symbol) = ex
-instantiate_scalar(ex) = ex
-
+"""
 function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
     if isgeneraltensor(ex)
         return instantiate_generaltensor(dst, β, ex, α, leftind, rightind, istemporary)
@@ -54,7 +24,58 @@ function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vect
     throw(ArgumentError("problem with parsing $ex"))
 end
 
-function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+"""
+    instantiate_eltype(ex::Expr)
+
+Make the tensor objects in the expression to be their types.
+"""
+function instantiate_eltype(ex::Expr)
+    if istensor(ex)
+        obj,_,_ = decomposetensor(ex)
+        return Expr(:call, :eltype, obj)
+    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
+        if length(ex.args) > 2
+            return Expr(:call, :promote_type, map(instantiate_eltype, ex.args[2:end])...)
+        else
+            return instantiate_eltype(ex.args[2])
+        end
+    elseif ex.head == :call && ex.args[1] == :conj
+        return instantiate_eltype(ex.args[2])
+    elseif isscalarexpr(ex)
+        return :(typeof($ex))
+    else
+        # return :(eltype($ex)) # would probably lead to doing the same operation twice
+        throw(ArgumentError("unable to determine eltype"))
+    end
+end
+instantiate_eltype(ex) = Expr(:call,:typeof, ex)
+
+"""
+    instantiate_scalar(ex::Expr)
+
+Make every scalar in the expression `ex` to be an instance of a scalar explicitly.
+"""
+function instantiate_scalar(ex::Expr)
+    if ex.head == :call && ex.args[1] == :scalar
+        @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
+        return :(scalar($(instantiate(nothing, 0, ex.args[2], 1, [], [], true))))
+    elseif ex.head == :call
+        return Expr(ex.head, ex.args[1], map(instantiate_scalar, ex.args[2:end])...)
+    else
+        return Expr(ex.head, map(instantiate_scalar, ex.args)...)
+    end
+end
+instantiate_scalar(ex::Symbol) = ex
+instantiate_scalar(ex) = ex
+
+"""
+    instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
+                                rightind::Vector{Any}, istemporary = false)
+
+
+"""
+function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
+                                    rightind::Vector{Any}, istemporary = false)
     src, srcleftind, srcrightind, α2, conj = decomposegeneraltensor(ex)
     srcind = vcat(srcleftind, srcrightind)
     conjarg = conj ? :(:C) : :(:N)

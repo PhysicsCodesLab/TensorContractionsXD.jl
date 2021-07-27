@@ -1,24 +1,36 @@
-mutable struct TensorParser
-    preprocessors::Vector{Any} # any preprocessing steps
-    contractiontreebuilder::Any # determine a contraction tree for a contraction involving multiple tensors
-    contractiontreesorter::Any # transforms the contraction expression into an expression of nested binary contractions using the tree output from the contractiontreebuilder
+"""
+    mutable struct TensorParser
 
+Define the `TensorParser` object which include the fields:
+- `preprocessors::Vector{Any}`: a list of all preprocessing steps
+- `contractiontreebuilder::Any`: determine a contraction tree for a contraction involving
+                                    multiple tensors
+- `contractiontreesorter::Any`: transforms the contraction expression into an expression of
+                                    nested binary contractions using the tree output from
+                                    the contractiontreebuilder
+- `postprocessors::Vector{Any}`: a list of all postprocessing steps
+"""
+mutable struct TensorParser
+    preprocessors::Vector{Any}
+    contractiontreebuilder::Any
+    contractiontreesorter::Any
     postprocessors::Vector{Any}
     function TensorParser()
-        preprocessors = [normalizeindices,
-                            expandconj,
-                            nconindexcompletion,
+        preprocessors = [normalizeindices, expandconj, nconindexcompletion,
                             extracttensorobjects]
         contractiontreebuilder = defaulttreebuilder
         contractiontreesorter = defaulttreesorter
         postprocessors = [_flatten, removelinenumbernode, addtensoroperations]
-        return new(preprocessors,
-                    contractiontreebuilder,
-                    contractiontreesorter,
+        return new(preprocessors, contractiontreebuilder, contractiontreesorter,
                     postprocessors)
     end
 end
 
+"""
+    (parser::TensorParser)(ex::Expr)
+
+Do the tensor contractions with the steps defined in `TensorParser`.
+"""
 function (parser::TensorParser)(ex::Expr)
     if ex isa Expr && ex.head == :function
         return Expr(:function, ex.args[1], parser(ex.args[2]))
@@ -36,6 +48,49 @@ function (parser::TensorParser)(ex::Expr)
     return ex
 end
 
+"""
+    defaulttreebuilder(network)
+
+The input `network` is a list of the open indices of each tensor in a tensor-contraction
+expression, and the `length(network)` is the number of tensors in the expression. Return
+`tree` in the form e.g. `Any[Any[Any[Any[1, 2], 3], 4], 5]` if `length(network) == 5`. This
+default tree contracts the tensors in the expression two-by-two from left to right.
+"""
+function defaulttreebuilder(network)
+    if isnconstyle(network)
+        tree = ncontree(network)
+    else
+        tree = Any[1,2]
+        for k = 3:length(network)
+            tree = Any[tree, k]
+        end
+    end
+    return tree
+end
+
+"""
+    defaulttreesorter(args, tree)
+
+Sort the sequencee of the contractions as given by the input `tree` by changing the
+positions of the tensors in the expreesion. The input `args` is a list of the tensors in the
+original tensor-contraction expression.
+"""
+function defaulttreesorter(args, tree)
+    if isa(tree, Int)
+        return args[tree]
+    else
+        return Expr(:call, :*,
+                        defaulttreesorter(args, tree[1]),
+                        defaulttreesorter(args, tree[2]))
+    end
+end
+
+"""
+    processcontractions(ex::Expr, treebuilder, treesorter)
+
+Sort the contractions based on the `treebuilder` and `treesorter` if the number of tensors
+in the contration expression is larger than two.
+"""
 function processcontractions(ex::Expr, treebuilder, treesorter)
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
         return ex
@@ -53,31 +108,13 @@ function processcontractions(ex::Expr, treebuilder, treesorter)
     end
     return ex
 end
-processcontractions(ex, treebuilder, treesorter) = ex
+processcontractions(ex, treebuilder, treesorter) = ex # if `ex` is not an Expr do nothing
 
-function defaulttreesorter(args, tree)
-    if isa(tree, Int)
-        return args[tree]
-    else
-        return Expr(:call, :*,
-                        defaulttreesorter(args, tree[1]),
-                        defaulttreesorter(args, tree[2]))
-    end
-end
-
-function defaulttreebuilder(network)
-    if isnconstyle(network)
-        tree = ncontree(network)
-    else
-        tree = Any[1,2]
-        for k = 3:length(network)
-            tree = Any[tree, k]
-        end
-    end
-    return tree
-end
+"""
+    tensorify(ex::Expr)
 
 # functions for parsing and processing tensor expressions
+"""
 function tensorify(ex::Expr)
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
         return ex.args[3]

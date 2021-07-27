@@ -1,22 +1,18 @@
 const defaultparser = TensorParser()
 
 """
-    @notensor(block)
-
-Marks a block which should be ignored within an `@tensor` environment. Has no effect outside of `@tensor`.
-"""
-macro notensor(ex::Expr)
-    return esc(ex)
-end
-
-"""
-    @tensor(block)
+    @tensor(ex)
+    @tensor(ex, orderex)
 
 Specify one or more tensor operations using Einstein's index notation. Indices can
-be chosen to be arbitrary Julia variable names, or integers. When contracting several
-tensors together, this will be evaluated as pairwise contractions in left to right
-order, unless the so-called NCON style is used (positive integers for contracted
-indices and negative indices for open indices).
+be chosen to be arbitrary Julia variable names or integers.
+
+When contracting several tensors together, this will be evaluated as pairwise contractions
+in left to right order.
+
+If the NCON style is used, the indices with the positive integers will be contracted in the
+sequence of (1,2,3...), while the indices with negative indices will be left open. If the
+indices of the output tensor is not specified, the default squence will be (-1,-2,-3,...).
 
 A second argument to the `@tensor` macro can be provided of the form `order=(...)`, where
 the list specifies the contraction indices in the order in which they will be contracted.
@@ -29,7 +25,7 @@ macro tensor(ex::Expr, orderex::Expr)
     parser = TensorParser()
     if !(orderex.head == :(=) && orderex.args[1] == :order &&
             orderex.args[2] isa Expr && orderex.args[2].head == :tuple)
-        throw(ArgumentError("unkown first argument in @tensor, should be `order = (...,)`"))
+        throw(ArgumentError("unkown second argument in @tensor, should be `order = (...,)`"))
     end
     indexorder = map(normalizeindex, orderex.args[2].args)
     parser.contractiontreebuilder = network->indexordertree(network, indexorder)
@@ -37,11 +33,21 @@ macro tensor(ex::Expr, orderex::Expr)
 end
 
 """
-    @tensoropt(optex, block)
-    @tensoropt(block)
+    @notensor(block)
+
+Marks a block which should be ignored within an `@tensor` environment. Has no effect
+outside of `@tensor`. It can be put in front of a full block of code, or a function.
+"""
+macro notensor(ex::Expr)
+    return esc(ex)
+end
+
+"""
+    @tensoropt(optex, ex)
+    @tensoropt(ex)
 
 Specify one or more tensor operations using Einstein's index notation. Indices can
-be chosen to be arbitrary Julia variable names, or integers. When contracting several
+be chosen to be arbitrary Julia variable names or integers. When contracting several
 tensors together, the macro will determine (at compile time) the optimal contraction
 order depending on the cost associated to the individual indices. If no `optex` is
 provided, all indices are assumed to have an abstract scaling `χ` which is optimized
@@ -51,7 +57,8 @@ The cost can be specified in the following ways:
 
 ```julia
 @tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) C[a,b,c,d] := A[a,e,c,f,h]*B[f,g,e,b]*C[g,d,h]
-# asymptotic cost as specified for listed indices, unlisted indices have cost 1 (any symbol for χ can be used)
+# asymptotic cost as specified for listed indices, unlisted indices have cost 1
+# (any symbol for χ can be used)
 @tensoropt (a,b,c,e) C[a,b,c,d] := A[a,e,c,f,h]*B[f,g,e,b]*C[g,d,h]
 # asymptotic cost χ for indices a,b,c,e, other indices (d,f) have cost 1
 @tensoropt !(a,b,c,e) C[a,b,c,d] := A[a,e,c,f,h]*B[f,g,e,b]*C[g,d,h]
@@ -61,7 +68,7 @@ The cost can be specified in the following ways:
 ```
 
 Note that `@tensoropt` will optimize any tensor contraction sequence it encounters
-in the (block of) expressions. It will however not break apart expressions that have
+in the expressions. It will however not break apart expressions that have
 been explicitly grouped with parenthesis, i.e. in
 ```julia
 @tensoroptC[a,b,c,d] := A[a,e,c,f,h]*(B[f,g,e,b]*C[g,d,h])
@@ -86,10 +93,11 @@ macro tensoropt(expressions...)
 end
 
 """
-    @tensoropt_verbose(optex, block)
-    @tensoropt_verbose(block)
+    @tensoropt_verbose(optex, ex)
+    @tensoropt_verbose(ex)
 
-Similar to `@tensoropt`, but prints information details regarding the optimization process to the standard output.
+Similar to `@tensoropt`, but prints information details regarding the optimization process
+to the standard output.
 """
 macro tensoropt_verbose(expressions...)
     if length(expressions) == 1
@@ -107,6 +115,13 @@ macro tensoropt_verbose(expressions...)
     return esc(parser(ex))
 end
 
+"""
+    @optimalcontractiontree(optex, ex)
+    @optimalcontractiontree(ex)
+
+Return the contraction tree and the correponding cost. No contraction is performed annnd the
+tensors involved do not need to exist.
+"""
 macro optimalcontractiontree(expressions...)
     if length(expressions) == 1
         ex = expressions[1]

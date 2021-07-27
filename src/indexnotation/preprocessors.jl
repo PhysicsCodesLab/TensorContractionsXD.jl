@@ -1,4 +1,8 @@
-# replace all indices by a function of that index
+"""
+    replaceindices((@nospecialize f), ex::Expr)
+
+Replace all indices of a tensor or tensors in an expreesion by a function of that index.
+"""
 function replaceindices((@nospecialize f), ex::Expr)
     if istensor(ex)
         if ex.head == :ref || ex.head == :typed_hcat
@@ -30,6 +34,11 @@ function replaceindices((@nospecialize f), ex::Expr)
 end
 replaceindices((@nospecialize f), ex) = ex
 
+"""
+    normalizeindex(ex)
+
+Make the input index `ex` to be a symbol or Int type instance.
+"""
 function normalizeindex(ex)
     if isa(ex, Symbol) || isa(ex, Int)
         return ex
@@ -40,9 +49,18 @@ function normalizeindex(ex)
     end
 end
 
+"""
+    normalizeindex(ex)
+
+Make the indices of the input expression `ex` to be symbol or Int type instance.
+"""
 normalizeindices(ex::Expr) = replaceindices(normalizeindex, ex)
 
-# replace all tensor objects by a function of that object
+"""
+    replacetensorobjects(f, ex::Expr)
+
+Replace all tensor objects by a function of that object.
+"""
 function replacetensorobjects(f, ex::Expr)
     # first try to replace ex completely
     ex2 = f(ex, nothing, nothing)
@@ -56,19 +74,11 @@ function replacetensorobjects(f, ex::Expr)
 end
 replacetensorobjects(f, ex) = f(ex, nothing, nothing)
 
-# expandconj: conjugate individual terms or factors instead of a whole expression
-function expandconj(ex::Expr)
-    if isgeneraltensor(ex) || isscalarexpr(ex)
-        return ex
-    elseif ex.head == :call && ex.args[1] == :conj
-        @assert length(ex.args) == 2
-        return conjexpr(expandconj(ex.args[2]))
-    else
-        return Expr(ex.head, map(expandconj, ex.args)...)
-    end
-end
-expandconj(ex) = ex
+"""
+    conjexpr(ex::Expr)
 
+Change each term of the expression `ex` to its conjugation.
+"""
 function conjexpr(ex::Expr)
     if ex.head == :call && ex.args[1] == :conj
         return ex.args[2]
@@ -86,7 +96,28 @@ conjexpr(ex::Number) = conj(ex)
 conjexpr(ex::Symbol) = Expr(:call, :conj, ex)
 conjexpr(ex) = ex
 
-# explicitscalar: wrap all tensor expressions with zero output indices in scalar call
+"""
+    expandconj(ex::Expr)
+
+Change the conjugate of a whole expression to the conjugate of individual terms or factors.
+"""
+function expandconj(ex::Expr)
+    if isgeneraltensor(ex) || isscalarexpr(ex)
+        return ex
+    elseif ex.head == :call && ex.args[1] == :conj
+        @assert length(ex.args) == 2
+        return conjexpr(expandconj(ex.args[2]))
+    else
+        return Expr(ex.head, map(expandconj, ex.args)...)
+    end
+end
+expandconj(ex) = ex
+
+"""
+    explicitscalar(ex::Expr)
+
+Wrap all tensor expressions with zero output indices in scalar call.
+"""
 function explicitscalar(ex::Expr)
     ex = Expr(ex.head, map(explicitscalar, ex.args)...)
     if istensorexpr(ex) && isempty(getindices(ex))
@@ -99,6 +130,12 @@ explicitscalar(ex) = ex
 
 # extracttensorobjects: replace all tensor objects with newly generated symbols, and assign
 # them before the expression and after the expression as necessary
+"""
+    extracttensorobjects(ex::Expr)
+
+Replace all tensor objects with newly generated symbols, and assign them before the
+expression and after the expression as necessary.
+"""
 function extracttensorobjects(ex::Expr)
     inputtensors = getinputtensorobjects(ex)
     outputtensors = getoutputtensorobjects(ex)
