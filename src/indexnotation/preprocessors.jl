@@ -59,7 +59,9 @@ normalizeindices(ex::Expr) = replaceindices(normalizeindex, ex)
 """
     replacetensorobjects(f, ex::Expr)
 
-Replace all tensor objects by a function of that object.
+Replace all tensor objects by a function of that object, and the arguments of the function
+`f` are `(obj, leftind, rightind)` which are obtained by decompose every tensor in the
+expression `ex`.
 """
 function replacetensorobjects(f, ex::Expr)
     # first try to replace ex completely

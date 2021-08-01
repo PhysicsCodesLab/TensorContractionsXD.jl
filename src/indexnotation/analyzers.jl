@@ -8,24 +8,24 @@ treat the tensor as a tensor map.
 """
 function decomposetensor(ex::Expr)
     istensor(ex) || throw(ArgumentError("not a valid tensor: $ex"))
-    if ex.head == :ref || ex.head == :typed_hcat
-        if length(ex.args) == 1
+    if ex.head == :ref || ex.head == :typed_hcat # ref: A[a,b,c] or A[a,b;c,d] or typed_hcat: A[a b c], A can be replaced by any `Expr`, e.g. A[1:3]
+        if length(ex.args) == 1 # A[]
             return ex.args[1], Any[], Any[]
-        elseif isa(ex.args[2], Expr) && ex.args[2].head == :parameters
+        elseif isa(ex.args[2], Expr) && ex.args[2].head == :parameters # A[a,b;c,d]
             return ex.args[1], ex.args[3:end], ex.args[2].args
-        else
+        else # A[a,b,c] or A[a b c]
             return ex.args[1], ex.args[2:end], Any[]
         end
-    else #if ex.head == :typed_vcat
-        if isa(ex.args[2], Expr) && (ex.args[2].head == :row || ex.args[2].head == :tuple)
+    else #if ex.head == :typed_vcat A[a b;c d] or A[(a,b);(c,d)]
+        if isa(ex.args[2], Expr) && (ex.args[2].head == :row || ex.args[2].head == :tuple) # row: A[a b; c]; or tuple: A[(a,b);c]
             leftind = ex.args[2].args
         else
-            leftind = ex.args[2:2]
+            leftind = ex.args[2:2] # A[a; b c]
         end
-        if isa(ex.args[3], Expr) && (ex.args[3].head == :row || ex.args[3].head == :tuple)
+        if isa(ex.args[3], Expr) && (ex.args[3].head == :row || ex.args[3].head == :tuple) # row: A[a; b c]; or tuple: A[a;(b,c)]
             rightind = ex.args[3].args
         else
-            rightind = ex.args[3:3]
+            rightind = ex.args[3:3] # A[a b; c]
         end
         return ex.args[1], leftind, rightind
     end
