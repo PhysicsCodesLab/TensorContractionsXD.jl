@@ -74,7 +74,7 @@ function decomposegeneraltensor(ex)
     elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2 # conjugation: flip conjugation flag and conjugate scalar factor
         (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
         return (object, leftind, rightind, Expr(:call, :conj, α), !conj)
-    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # scalar multiplication: muliply scalar factors
+    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # scalar multiplication: multiply scalar factors
         if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
             (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[3])
             return (object, leftind, rightind, Expr(:call, :*, ex.args[2], α), conj)
@@ -123,24 +123,31 @@ function getrhs(ex::Expr)
 end
 
 """
-    gettensorobjects(ex)
+    gettensors(ex)
 
-Return a list of all the tensor objects in a tensor expression (not a definition or
-assignment).
+Return a list of all the tensors in a tensor expression (not a definition or assignment).
 """
-function gettensorobjects(ex)
+function gettensors(ex)
     if istensor(ex)
-        Any[gettensorobject(ex)]
+        Any[ex]
     elseif istensorexpr(ex)
         list = Any[]
         for e in ex.args
-            append!(list, gettensorobjects(e))
+            append!(list, gettensors(e))
         end
         return list
     else
         return Any[]
     end
 end
+
+"""
+    gettensorobjects(ex)
+
+Return a list of all the tensor objects in a tensor expression (not a definition or
+assignment).
+"""
+gettensorobjects(ex) = gettensorobject.(gettensors(ex))
 
 """
     getinputtensorobjects(ex)
@@ -150,7 +157,9 @@ of assignments and definitions).
 """
 function getinputtensorobjects(ex)
     list = Any[]
-    if isdefinition(ex)
+    if istensorexpr(ex)
+        append!(list, gettensorobjects(ex))
+    elseif isdefinition(ex)
         append!(list, gettensorobjects(getrhs(ex)))
     elseif isassignment(ex)
         if ex.head == :(+=) || ex.head == :(-=)

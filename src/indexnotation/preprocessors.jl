@@ -65,6 +65,9 @@ expression `ex`.
 """
 function replacetensorobjects(f, ex::Expr)
     # first try to replace ex completely
+    # first try to replace ex completely:
+    # this needed if `ex` is a tensor object that appears outside an actual tensor expression
+    # in a 'regular' block of code
     ex2 = f(ex, nothing, nothing)
     ex2 !== ex && return ex2
     if istensor(ex)

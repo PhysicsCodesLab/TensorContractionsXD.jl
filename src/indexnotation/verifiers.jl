@@ -99,14 +99,10 @@ function isgeneraltensor(ex::Expr)
         return count == 1
     elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3
         # scalar multiplication
-        if isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
-            return true
-        end
+        return (isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2]))
     elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3
         # scalar multiplication
-        if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
-            return true
-        end
+        return (isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3]))
     end
     return false
 end
@@ -195,7 +191,7 @@ end
 Check if the input `ex` is an assignment to an existing tensor.
 """
 isassignment(ex) = false
-isassignment(ex::Expr) = ex.head == :(=) || ex.head == :(+=) || ex.head == :(-=)
+isassignment(ex::Expr) = (ex.head == :(=) || ex.head == :(+=) || ex.head == :(-=))
 
 """
     isdefinition(ex)
@@ -203,4 +199,4 @@ isassignment(ex::Expr) = ex.head == :(=) || ex.head == :(+=) || ex.head == :(-=)
 Check if the input `ex` is an expression that create a new tensor by definition.
 """
 isdefinition(ex) = false
-isdefinition(ex::Expr) = (ex.head == :(:=) || ex.head == :(≔)) && istensor(ex.args[1])
+isdefinition(ex::Expr) = (ex.head == :(:=) || ex.head == :(≔))

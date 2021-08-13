@@ -31,8 +31,7 @@ Make the tensor objects in the expression to be their types.
 """
 function instantiate_eltype(ex::Expr)
     if istensor(ex)
-        obj,_,_ = decomposetensor(ex)
-        return Expr(:call, :eltype, obj)
+        return Expr(:call, :eltype, gettensorobject(ex))
     elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
         if length(ex.args) > 2
             return Expr(:call, :promote_type, map(instantiate_eltype, ex.args[2:end])...)
@@ -48,7 +47,7 @@ function instantiate_eltype(ex::Expr)
         throw(ArgumentError("unable to determine eltype"))
     end
 end
-instantiate_eltype(ex) = Expr(:call,:typeof, ex)
+instantiate_eltype(ex) = Expr(:call, :typeof, ex)
 
 """
     instantiate_scalar(ex::Expr)
