@@ -1,3 +1,8 @@
+"""
+    _flatten(ex::Expr)
+
+Remove the `:block` in the inner expression and put it at the most out level.
+"""
 function _flatten(ex::Expr)
     head = ex.head
     args = _flatten.(ex.args)
@@ -25,6 +30,11 @@ function _flatten(ex::Expr)
 end
 _flatten(e) = e
 
+"""
+    removelinenumbernode(ex::Expr)
+
+Remove all the `LineNumberNode` in the `:block` structure.
+"""
 function removelinenumbernode(ex::Expr)
     if ex.head == :block
         return Expr(:block, (removelinenumbernode(e) for e in ex.args if !(e isa LineNumberNode))...)
@@ -38,6 +48,13 @@ const tensoroperationsfunctions = (:similar_from_indices,
                                     :cached_similar_from_indices,
                                     :add!, :trace!, :contract!,
                                     :scalar, :IndexError)
+
+"""
+    addtensoroperations(ex::Expr)
+
+Provide the path to the true implementation functions of the tensor operations that are
+instantiated in the expression.
+"""
 function addtensoroperations(ex::Expr)
     if ex.head == :call && ex.args[1] in tensoroperationsfunctions
         return Expr(ex.head, GlobalRef(TensorOperationsXD, ex.args[1]),

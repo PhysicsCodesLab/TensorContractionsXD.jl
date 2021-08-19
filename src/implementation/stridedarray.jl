@@ -10,7 +10,7 @@ memsize(A::AbstractArray) = memsize(parent(A))
 Returns the structure of an object similar to `A` (e.g. `size` for `AbstractArray` objects)
 which has an `eltype` given by `T` and whose left indices correspond to the indices
 `indleft` from `op(A)`, and its right indices correspond to the indices `indright` from
-`op(A)`, where `op` is `conj` if `conjA == :C` or does nothing if `conjA == :N` (default).
+`op(A)`, where `op` is `conj` if `CA == :C` or does nothing if `CA == :N` (default).
 """
 similarstructure_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple,
                                 A::AbstractArray, CA::Symbol = :N) =
@@ -19,14 +19,15 @@ similarstructure_from_indices(T::Type, p1::IndexTuple, p2::IndexTuple,
 _similarstructure_from_indices(T, ind, A::AbstractArray) = map(n->size(A, n), ind)
 
 """
-    similarstructure_from_indices(T, indoA, indoB, indleft, indright, A, B, conjA = :N, conjB= :N)
+    similarstructure_from_indices(T, indoA, indoB, indleft, indright, A, B,
+                                    conjA = :N, conjB= :N)
 
 Returns the structure of an object similar to `A` (e.g. `size` for `AbstractArray` objects)
 which has an `eltype` given by `T` and whose structure corresponds to a selection of that
 of `opA(A)` and `opB(B)` combined. Out of the collection of indices in `indoA` of `opA(A)`
 and `indoB` of `opB(B)`, we construct an object whose left (right) indices correspond to
 indices `indleft` (`indright`) from that collection. Here, `opA` (`opB`) is `conj` if
-`conjA == :C` (`conjB == :C`) or does nothing if `conjA == :N` (`conjB == :N`), which is
+`CA == :C` (`CB == :C`) or does nothing if `CA == :N` (`CB == :N`), which is
 the default).
 """
 similarstructure_from_indices(T::Type, poA::IndexTuple, poB::IndexTuple,
@@ -56,13 +57,13 @@ function scalar end
 scalar(C::AbstractArray) = ndims(C)==0 ? C[] : throw(DimensionMismatch())
 
 """
-    add!(α, A, conjA, β, C, indleft, indright)
+    add!(α, A, CA, β, C, indleft, indright)
 
 Implements `C = β*C+α*permute(op(A))` where `A` is permuted such that the left (right)
 indices of `C` correspond to the indices `indleft` (`indright`) of `A`, and `op` is `conj`
-if `conjA == :C` or the identity map if `conjA == :N` (default). Together,
-`(indleft..., indright...)` is a permutation of 1 to the number of indices (dimensions) of
-`A`.
+if `CA == :C` or the identity map if `CA == :N` (default) or `adjoint` if `CA == :A`.
+Together, `(indleft..., indright...)` is a permutation of 1 to the number of indices
+(dimensions) of `A`.
 """
 add!(α, A::AbstractArray, CA::Symbol, β, C::AbstractArray, indleft::IndexTuple,
         indright::IndexTuple) = add!(α, A, CA, β, C, (indleft..., indright...))
@@ -94,26 +95,25 @@ function add!(α, A::AbstractArray{<:Any, N}, CA::Symbol,
     end
     return C
 end
-_add!(α, A::AbstractStridedView{<:Any,N},
-        β, C::AbstractStridedView{<:Any,N}, indCinA::IndexTuple{N}) where N =
-    LinearAlgebra.axpby!(α, permutedims(A, indCinA), β, C)
+_add!(α, A::AbstractStridedView{<:Any,N}, β, C::AbstractStridedView{<:Any,N},
+    indCinA::IndexTuple{N}) where N = LinearAlgebra.axpby!(α, permutedims(A, indCinA), β, C)
 
 """
-    trace!(α, A, conjA, β, C, indleft, indright, cind1, cind2)
+    trace!(α, A, CA, β, C, indleft, indright, cind1, cind2)
 
 Implements `C = β*C+α*partialtrace(op(A))` where `A` is permuted and partially traced,
 such that the left (right) indices of `C` correspond to the indices `indleft` (`indright`)
-of `A`, and indices `cindA1` are contracted with indices `cindA2`. Furthermore, `op` is
-`conj` if `conjA == :C` or the identity map if `conjA=:N` (default). Together,
-`(indleft..., indright..., cind1, cind2)` is a permutation of 1 to the number of indices
-(dimensions) of `A`.
+of `op(A)`, and indices `cind1` are contracted with indices `cind2`. The `op` is
+`conj` if `CA == :C` or the identity map if `CA=:N` (default) or `adjoint` if `CA == :A`.
+Together, `(indleft..., indright..., cind1, cind2)` is a permutation of 1 to the number of
+indices (dimensions) of `A`.
 """
 trace!(α, A::AbstractArray, CA::Symbol, β, C::AbstractArray, indleft::IndexTuple,
         indright::IndexTuple, cind1::IndexTuple, cind2::IndexTuple) =
     trace!(α, A, CA, β, C, (indleft..., indright...), cind1, cind2)
 
 function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArray{<:Any, NC},
-        indCinA, cindA1, cindA2) where {NA,NC}
+                    indCinA, cindA1, cindA2) where {NA,NC}
 
     NC == length(indCinA) ||
         throw(IndexError("Invalid selection of $NC out of $NA: $indCinA"))
@@ -122,26 +122,26 @@ function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArra
     if CA == :N
         if isbitstype(eltype(A)) && isbitstype(eltype(C))
             @unsafe_strided A C _trace!(α, A, β, C,
-                (indCinA...,), (cindA1...,), (cindA2...,))
+                                            (indCinA...,), (cindA1...,), (cindA2...,))
         else
             _trace!(α, StridedView(A), β, StridedView(C),
-                (indCinA...,), (cindA1...,), (cindA2...,))
+                        (indCinA...,), (cindA1...,), (cindA2...,))
         end
     elseif CA == :C
         if isbitstype(eltype(A)) && isbitstype(eltype(C))
             @unsafe_strided A C _trace!(α, conj(A), β, C,
-                (indCinA...,), (cindA1...,), (cindA2...,))
+                                            (indCinA...,), (cindA1...,), (cindA2...,))
         else
             _trace!(α, conj(StridedView(A)), β, StridedView(C),
-                (indCinA...,), (cindA1...,), (cindA2...,))
+                        (indCinA...,), (cindA1...,), (cindA2...,))
         end
     elseif CA == :A
         if isbitstype(eltype(A)) && isbitstype(eltype(C))
             @unsafe_strided A C _trace!(α, map(adjoint, A), β, C,
-                (indCinA...,), (cindA1...,), (cindA2...,))
+                                            (indCinA...,), (cindA1...,), (cindA2...,))
         else
             _trace!(α, map(adjoint, StridedView(A)), β, StridedView(C),
-                (indCinA...,), (cindA1...,), (cindA2...,))
+                        (indCinA...,), (cindA1...,), (cindA2...,))
         end
     else
         throw(ArgumentError("Unknown conjugation flag: $CA"))
@@ -149,9 +149,9 @@ function trace!(α, A::AbstractArray{<:Any, NA}, CA::Symbol, β, C::AbstractArra
     return C
 end
 
-function _trace!(α, A::AbstractStridedView,
-        β, C::AbstractStridedView, indCinA::IndexTuple{NC},
-        cindA1::IndexTuple{NT}, cindA2::IndexTuple{NT}) where {NC,NT}
+function _trace!(α, A::AbstractStridedView, β, C::AbstractStridedView,
+                    indCinA::IndexTuple{NC},
+                    cindA1::IndexTuple{NT}, cindA2::IndexTuple{NT}) where {NC,NT}
 
     sizeA = i->size(A, i)
     strideA = i->stride(A, i)
@@ -188,18 +188,21 @@ function _trace!(α, A::AbstractStridedView,
 end
 
 """
-    contract!(α, A, conjA, B, conjB, β, C, oindA, cindA, oindB, cindB, indleft, indright, syms = nothing)
+    contract!(α, A, CA, B, CB, β, C, oindA, cindA, oindB, cindB, indleft,
+                indright, syms = nothing)
 
 Implements `C = β*C+α*contract(opA(A),opB(B))` where `A` and `B` are contracted, such that
 the indices `cindA` of `A` are contracted with indices `cindB` of `B`. The open indices
 `oindA` of `A` and `oindB` of `B` are permuted such that `C` has left (right) indices
 corresponding to indices `indleft` (`indright`) out of `(oindA..., oindB...)`. The
-operation `opA` (`opB`) acts as `conj` if `conjA` (`conjB`) equal `:C` or as the identity
-map if `conjA` (`conjB`) equal `:N`. Together, `(oindA..., cindA...)` is a permutation of
+operation `opA` (`opB`) acts as `conj` if `CA` (`CB`) equal `:C` or as the identity
+map if `CA` (`CB`) equal `:N`. Together, `(oindA..., cindA...)` is a permutation of
 1 to the number of indices of `A` and `(oindB..., cindB...)` is a permutation of 1 to the
-number of indices of `C`. Furthermore, `length(cindA) == length(cindB)`,
-`length(oindA)+length(oindB)` equals the number of indices of `C` and `(indleft...,
-indright...)` is a permutation of `1` ot the number of indices of `C`.
+number of indices of `C`.
+
+`length(cindA) == length(cindB)`, and `length(oindA)+length(oindB)` equals the number of
+indices of `C` and `(indleft..., indright...)` is a permutation of `1` ot the number of
+indices of `C`.
 
 The final argument `syms` is optional and can be either `nothing`, or a tuple of three
 symbols, which are used to identify temporary objects in the cache to be used for permuting

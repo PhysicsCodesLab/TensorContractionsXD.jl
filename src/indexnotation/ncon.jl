@@ -57,14 +57,20 @@ function _ncontree!(partialtrees, contractionindices)
     _ncontree!(partialtrees, contractionindices)
 end
 
+"""
+    nconindexcompletion(ex)
+
+Complete the indices of left hand side of the assignment or definition if they are not
+specified in the NCON style.
+"""
 function nconindexcompletion(ex)
     if isassignment(ex) || isdefinition(ex)
         lhs, rhs = getlhs(ex), getrhs(ex)
         # process left hand side
         if istensor(lhs) && istensorexpr(rhs)
             indices = getindices(rhs)
-
             if lhs.head == :ref && length(lhs.args) == 2 && lhs.args[2] == :(:)
+                #A[:]
                 if all(isa(i, Integer) && i < 0 for i in indices)
                     lhs = Expr(:ref, lhs.args[1], sort(indices, rev=true)...)
                 else

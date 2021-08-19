@@ -73,15 +73,15 @@ end
 
 Sort the sequencee of the contractions as given by the input `tree` by changing the
 positions of the tensors in the expreesion. The input `args` is a list of the tensors in the
-original tensor-contraction expression.
+original tensor-contraction expression. The returned expression has the form e.g.
+`(((A[a,b]*B[c,d])*C[a,c]))*D[b,f])`.
 """
 function defaulttreesorter(args, tree)
     if isa(tree, Int)
         return args[tree]
     else
         return Expr(:call, :*,
-                        defaulttreesorter(args, tree[1]),
-                        defaulttreesorter(args, tree[2]))
+                    defaulttreesorter(args, tree[1]), defaulttreesorter(args, tree[2]))
     end
 end
 
@@ -113,7 +113,9 @@ processcontractions(ex, treebuilder, treesorter) = ex # if `ex` is not an Expr d
 """
     tensorify(ex::Expr)
 
-# functions for parsing and processing tensor expressions
+Functions for parsing and processing tensor expressions. Instantiate the tensor operations
+by implementing the functions like `add!`, `trace!` and `contract!` explicitly in the
+returned expression.
 """
 function tensorify(ex::Expr)
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
@@ -125,8 +127,6 @@ function tensorify(ex::Expr)
         if isa(rhs, Expr) && rhs.head == :call && rhs.args[1] == :throw
             return rhs
         end
-
-        # process left hand side
         if istensor(lhs) && istensorexpr(rhs)
             indices = getindices(rhs)
             if hastraceindices(lhs)
@@ -143,15 +143,17 @@ function tensorify(ex::Expr)
                     return instantiate(dst, false, rhs, true, leftind, rightind)
                 elseif ex.head == :(+=)
                     return instantiate(dst, true, rhs, 1, leftind, rightind)
-                else
+                else # if ex.head == :(-=)
                     return instantiate(dst, true, rhs, -1, leftind, rightind)
                 end
-            else
-                return Expr(:(=), dst, instantiate(nothing, false, rhs, true, leftind, rightind, false))
+            else # if isdefinition(ex)
+                return Expr(:(=), dst, instantiate(nothing, false, rhs, true, leftind,
+                                                    rightind, false))
             end
         elseif isassignment(ex) && isscalarexpr(lhs)
             if istensorexpr(rhs) && isempty(getindices(rhs))
-                return Expr(ex.head, instantiate_scalar(lhs), Expr(:call, :scalar, instantiate(nothing, false, rhs, true, [], [], true)))
+                return Expr(ex.head, instantiate_scalar(lhs), Expr(:call, :scalar,
+                                    instantiate(nothing, false, rhs, true, [], [], true)))
             elseif isscalarexpr(rhs)
                 return Expr(ex.head, instantiate_scalar(lhs), instantiate_scalar(rhs))
             end

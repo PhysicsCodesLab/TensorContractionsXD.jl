@@ -1,102 +1,5 @@
 # Tools to analyze parts of tensor expressions and extract information
 """
-    decomposetensor(ex::Expr)
-
-Decompose a tensor expression into the tensor object, left indices, and right indices, where
-the left indices correspond to the codomain and right indices correspond to the domain if we
-treat the tensor as a tensor map.
-"""
-function decomposetensor(ex::Expr)
-    istensor(ex) || throw(ArgumentError("not a valid tensor: $ex"))
-    if ex.head == :ref || ex.head == :typed_hcat # ref: A[a,b,c] or A[a,b;c,d] or typed_hcat: A[a b c], A can be replaced by any `Expr`, e.g. A[1:3]
-        if length(ex.args) == 1 # A[]
-            return ex.args[1], Any[], Any[]
-        elseif isa(ex.args[2], Expr) && ex.args[2].head == :parameters # A[a,b;c,d]
-            return ex.args[1], ex.args[3:end], ex.args[2].args
-        else # A[a,b,c] or A[a b c]
-            return ex.args[1], ex.args[2:end], Any[]
-        end
-    else #if ex.head == :typed_vcat A[a b;c d] or A[(a,b);(c,d)]
-        if isa(ex.args[2], Expr) && (ex.args[2].head == :row || ex.args[2].head == :tuple) # row: A[a b; c]; or tuple: A[(a,b);c]
-            leftind = ex.args[2].args
-        else
-            leftind = ex.args[2:2] # A[a; b c]
-        end
-        if isa(ex.args[3], Expr) && (ex.args[3].head == :row || ex.args[3].head == :tuple) # row: A[a; b c]; or tuple: A[a;(b,c)]
-            rightind = ex.args[3].args
-        else
-            rightind = ex.args[3:3] # A[a b; c]
-        end
-        return ex.args[1], leftind, rightind
-    end
-end
-
-"""
-    gettensorobject(ex)
-
-Get the name or object of the tensor.
-"""
-gettensorobject(ex) = decomposetensor(ex)[1]
-
-"""
-    getleftindices(ex)
-
-Get the left indices of a tensor that correspond to the codomain.
-"""
-getleftindices(ex) = decomposetensor(ex)[2]
-
-"""
-    getrightindices(ex)
-
-Get the right indices of a tensor that correspond to the domain.
-"""
-getrightindices(ex) = decomposetensor(ex)[3]
-
-
-"""
-    decomposegeneraltensor(ex)
-
-Decompose a general tensor and return `(object, leftind, rightind, α, conj)`, where `α` is
-the possible scalar that multiplied with the tensor, and `conj` is a symbol that denote
-whether we need to apply complex conjugation on that tensor.
-
-??? Why there is no cases with `:adjoint` and `:transpose`.
-"""
-function decomposegeneraltensor(ex)
-    if istensor(ex)
-        object, leftind, rightind = decomposetensor(ex)
-        return (object, leftind, rightind, true, false)
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :+ && length(ex.args) == 2 # unary plus: pass on
-        return decomposegeneraltensor(ex.args[2])
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :- && length(ex.args) == 2 # unary minus: flip scalar factor
-        (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
-        return (object, leftind, rightind, Expr(:call, :-, α), conj)
-    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2 # conjugation: flip conjugation flag and conjugate scalar factor
-        (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
-        return (object, leftind, rightind, Expr(:call, :conj, α), !conj)
-    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # scalar multiplication: multiply scalar factors
-        if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
-            (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[3])
-            return (object, leftind, rightind, Expr(:call, :*, ex.args[2], α), conj)
-        elseif isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
-            (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
-            return (object, leftind, rightind, Expr(:call, :*, α, ex.args[3]), conj)
-        end
-    elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3 # scalar multiplication: muliply scalar factors
-        if isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
-            (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
-            return (object, leftind, rightind, Expr(:call, :/, α, ex.args[3]), conj)
-        end
-    elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3 # scalar multiplication: muliply scalar factors
-        if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
-            (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[3])
-            return (object, leftind, rightind, Expr(:call, :\, ex.args[2], α), conj)
-        end
-    end
-    throw(ArgumentError("not a valid generalized tensor expression $ex"))
-end
-
-"""
     getlhs(ex::Expr)
 
 Get the left hand side of an assignment or definition expression.
@@ -125,7 +28,8 @@ end
 """
     gettensors(ex)
 
-Return a list of all the tensors in a tensor expression (not a definition or assignment).
+Return a list of all the tensors (inlcude tensor objects and indices) in a tensor
+expression (not a definition or assignment).
 """
 function gettensors(ex)
     if istensor(ex)
@@ -142,6 +46,56 @@ function gettensors(ex)
 end
 
 """
+    decomposetensor(ex::Expr)
+
+Decompose a tensor expression into the tensor object, left indices, and right indices, where
+the left indices correspond to the codomain and right indices correspond to the domain if we
+treat the tensor as a tensor map.
+"""
+function decomposetensor(ex::Expr)
+    istensor(ex) || throw(ArgumentError("not a valid tensor: $ex"))
+    if ex.head == :ref || ex.head == :typed_hcat
+        # ref: A[] or A[a,b;c,d] or A[a,b,c]
+        # typed_hcat: A[a b c],
+        # A can be replaced by any `Expr`, e.g. A[1:3]
+        if length(ex.args) == 1
+            # A[]
+            return ex.args[1], Any[], Any[]
+        elseif isa(ex.args[2], Expr) && ex.args[2].head == :parameters
+            # A[a,b,...;c,d,...]
+            return ex.args[1], ex.args[3:end], ex.args[2].args
+        else
+            # A[a,b,c,...] or A[a b c ...]
+            return ex.args[1], ex.args[2:end], Any[]
+        end
+    else
+        # ex.head == :typed_vcat: A[a b;c d] or A[(a,b);(c,d)]
+        if isa(ex.args[2], Expr) && (ex.args[2].head == :row || ex.args[2].head == :tuple)
+            # row: A[a b ...; ...]; or tuple: A[(a,b,...); ...]
+            leftind = ex.args[2].args
+        else
+            # A[a; ...]
+            leftind = ex.args[2:2]
+        end
+        if isa(ex.args[3], Expr) && (ex.args[3].head == :row || ex.args[3].head == :tuple)
+            # row: A[...; b c ...]; or tuple: A[...;(b,c,...)]
+            rightind = ex.args[3].args
+        else
+            # A[...; c]
+            rightind = ex.args[3:3]
+        end
+        return ex.args[1], leftind, rightind
+    end
+end
+
+"""
+    gettensorobject(ex)
+
+Get the name or object of the tensor.
+"""
+gettensorobject(ex) = decomposetensor(ex)[1]
+
+"""
     gettensorobjects(ex)
 
 Return a list of all the tensor objects in a tensor expression (not a definition or
@@ -150,10 +104,124 @@ assignment).
 gettensorobjects(ex) = gettensorobject.(gettensors(ex))
 
 """
+    getleftindices(ex)
+
+Get the left indices of a tensor that correspond to the codomain.
+"""
+getleftindices(ex) = decomposetensor(ex)[2]
+
+"""
+    getrightindices(ex)
+
+Get the right indices of a tensor that correspond to the domain.
+"""
+getrightindices(ex) = decomposetensor(ex)[3]
+
+"""
+    decomposegeneraltensor(ex)
+
+Decompose a general tensor and return `(object, leftind, rightind, α, conj)`, where `α` is
+the possible scalar that multiplied with the tensor, and `conj` is a symbol that denote
+whether we need to apply complex conjugation on that tensor.
+
+??? Why there is no cases with `:adjoint` and `:transpose`.
+"""
+function decomposegeneraltensor(ex)
+    if istensor(ex)
+        object, leftind, rightind = decomposetensor(ex)
+        return (object, leftind, rightind, true, false)
+    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :+ && length(ex.args) == 2
+        # unary plus: pass on
+        return decomposegeneraltensor(ex.args[2])
+    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :- && length(ex.args) == 2
+        # unary minus: flip scalar factor
+        (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
+        return (object, leftind, rightind, Expr(:call, :-, α), conj)
+    elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :conj && length(ex.args) == 2
+        # conjugation: flip conjugation flag and conjugate scalar factor
+        (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
+        return (object, leftind, rightind, Expr(:call, :conj, α), !conj)
+    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3
+        # scalar multiplication: multiply scalar factors
+        if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
+            (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[3])
+            return (object, leftind, rightind, Expr(:call, :*, ex.args[2], α), conj)
+        elseif isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
+            (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
+            return (object, leftind, rightind, Expr(:call, :*, α, ex.args[3]), conj)
+        end
+    elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3
+        # scalar multiplication: muliply scalar factors
+        if isscalarexpr(ex.args[3]) && isgeneraltensor(ex.args[2])
+            (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[2])
+            return (object, leftind, rightind, Expr(:call, :/, α, ex.args[3]), conj)
+        end
+    elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3
+        # scalar multiplication: muliply scalar factors
+        if isscalarexpr(ex.args[2]) && isgeneraltensor(ex.args[3])
+            (object, leftind, rightind, α, conj) = decomposegeneraltensor(ex.args[3])
+            return (object, leftind, rightind, Expr(:call, :\, ex.args[2], α), conj)
+        end
+    end
+    throw(ArgumentError("not a valid generalized tensor expression $ex"))
+end
+
+"""
+    getnewtensorobjects(ex)
+
+Return a list of tensor objects which are newly created, i.e., appear on the lhs of
+definitions).
+"""
+function getnewtensorobjects(ex)
+    list = Any[]
+    if isdefinition(ex)
+        lhs = getlhs(ex)
+        if istensor(lhs)
+            push!(list, gettensorobject(lhs))
+        end
+    elseif isa(ex, Expr) && ex.head == :block
+        for e in ex.args
+            append!(list, getnewtensorobjects(e))
+        end
+    elseif isa(ex, Expr) && ex.head in (:for, :while)
+        append!(list, getnewtensorobjects(ex.args[2]))
+    end
+    return unique!(list)
+end
+
+"""
+    getoutputtensorobjects(ex)
+
+Return a list of tensor objects which already exist and are outputs, i.e., appear in the lhs
+of assignments.
+"""
+function getoutputtensorobjects(ex)
+    list = Any[]
+    if isassignment(ex)
+        lhs = getlhs(ex)
+        if istensor(lhs)
+            push!(list, gettensorobject(lhs))
+        end
+    elseif isa(ex, Expr) && ex.head == :block
+        for i = 1:length(ex.args)
+            list2 = getoutputtensorobjects(ex.args[i])
+            for j = 1:i-1
+                # if objects have previously been defined, they are not existing outputs
+                list2 = setdiff(list2, getnewtensorobjects(ex.args[j]))
+            end
+            append!(list, list2)
+        end
+    elseif isa(ex, Expr) && ex.head in (:for, :while)
+        append!(list, getoutputtensorobjects(ex.args[2]))
+    end
+    return unique!(list)
+end
+
+"""
     getinputtensorobjects(ex)
 
-Return a list of all the existing tensor objects which are inputs (i.e. appear in the rhs
-of assignments and definitions).
+Return a list of tensor objects which already exist and are inputs, i.e., appear in the rhs
+of assignments and definitions.
 """
 function getinputtensorobjects(ex)
     list = Any[]
@@ -183,57 +251,6 @@ function getinputtensorobjects(ex)
         append!(list, getinputtensorobjects(ex.args[2]))
     elseif isa(ex, Expr) && ex.head == :call && ex.args[1] == :scalar
         append!(list, gettensorobjects(ex.args[2]))
-    end
-    return unique!(list)
-end
-
-"""
-    getoutputtensorobjects(ex)
-
-Return a list of all the existing tensor objects which are outputs (i.e. appear in the lhs
-of assignments).
-"""
-function getoutputtensorobjects(ex)
-    list = Any[]
-    if isassignment(ex)
-        lhs = getlhs(ex)
-        if istensor(lhs)
-            push!(list, gettensorobject(lhs))
-        end
-    elseif isa(ex, Expr) && ex.head == :block
-        for i = 1:length(ex.args)
-            list2 = getoutputtensorobjects(ex.args[i])
-            for j = 1:i-1
-                # if objects have previously been defined, they are not existing outputs
-                list2 = setdiff(list2, getnewtensorobjects(ex.args[j]))
-            end
-            append!(list, list2)
-        end
-    elseif isa(ex, Expr) && ex.head in (:for, :while)
-        append!(list, getoutputtensorobjects(ex.args[2]))
-    end
-    return unique!(list)
-end
-
-"""
-    getnewtensorobjects(ex)
-
-Return a list of all the existing tensor objects which are newly created (i.e. appear in
-the lhs of definition).
-"""
-function getnewtensorobjects(ex)
-    list = Any[]
-    if isdefinition(ex)
-        lhs = getlhs(ex)
-        if istensor(lhs)
-            push!(list, gettensorobject(lhs))
-        end
-    elseif isa(ex, Expr) && ex.head == :block
-        for e in ex.args
-            append!(list, getnewtensorobjects(e))
-        end
-    elseif isa(ex, Expr) && ex.head in (:for, :while)
-        append!(list, getnewtensorobjects(ex.args[2]))
     end
     return unique!(list)
 end

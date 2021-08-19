@@ -1,24 +1,28 @@
 """
     replaceindices((@nospecialize f), ex::Expr)
 
-Replace all indices of a tensor or tensors in an expreesion by a function of that index.
+Apply function `f` to all indices of a tensor or tensors in an expreesion.
 """
 function replaceindices((@nospecialize f), ex::Expr)
     if istensor(ex)
         if ex.head == :ref || ex.head == :typed_hcat
             if length(ex.args) == 1
+                # A[]
                 return ex
             elseif isa(ex.args[2], Expr) && ex.args[2].head == :parameters
+                # A[a,b,...;c,d,...]
                 arg2 = ex.args[2]
                 return Expr(ex.head, ex.args[1],
                             Expr(arg2.head, map(f, arg2.args)...),
                             (f(ex.args[i]) for i = 3:length(ex.args))...)
             else
+                # A[a,b,c,...] or A[a b c ...]
                 return Expr(ex.head, ex.args[1],
                             (f(ex.args[i]) for i = 2:length(ex.args))...)
             end
             return ex
         else #if ex.head == :typed_vcat
+            # A[a b;c d] or A[(a,b);(c,d)]
             arg2, arg3 = map((ex.args[2], ex.args[3])) do arg
                 if isa(arg, Expr) && (arg.head == :row || arg.head == :tuple)
                     return Expr(arg.head, map(f, arg.args)...)
@@ -37,7 +41,8 @@ replaceindices((@nospecialize f), ex) = ex
 """
     normalizeindex(ex)
 
-Make the input index `ex` to be a symbol or Int type instance.
+Make the input index `ex` to be a symbol or Int type instance. Mainly deal with the index
+in the form with a prime. Throw error if the form of the index is not allowed.
 """
 function normalizeindex(ex)
     if isa(ex, Symbol) || isa(ex, Int)
@@ -50,9 +55,9 @@ function normalizeindex(ex)
 end
 
 """
-    normalizeindex(ex)
+    normalizeindices(ex::Expr)
 
-Make the indices of the input expression `ex` to be symbol or Int type instance.
+Make all indices of the input expression `ex` to be symbol or Int type instance.
 """
 normalizeindices(ex::Expr) = replaceindices(normalizeindex, ex)
 
@@ -133,13 +138,14 @@ function explicitscalar(ex::Expr)
 end
 explicitscalar(ex) = ex
 
-# extracttensorobjects: replace all tensor objects with newly generated symbols, and assign
-# them before the expression and after the expression as necessary
 """
     extracttensorobjects(ex::Expr)
 
-Replace all tensor objects with newly generated symbols, and assign them before the
-expression and after the expression as necessary.
+For all tensors in `ex`, use `gensym()` to generate uniquely symbols for the tensor objects.
+Return the expression that contains:
+1. Assign all existing tensor objects to their corresponding generated objects.
+2. Replace all objects in the `ex` with the generated ones.
+3. Change the objects of the newly created tensors back to their original names.
 """
 function extracttensorobjects(ex::Expr)
     inputtensors = getinputtensorobjects(ex)

@@ -1,25 +1,36 @@
 """
-    instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+    instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
+                    istemporary = false)
 
-
+Instantiate tensor expression `ex` by implementing the function `add!`, `trace!` and
+`contract!` explicitly. Return `β * dst + α * ex` as a tensor with left indices as `leftind`
+from `ex` and with right indices as `rightind` from `ex`. The result is cached if
+`istemporary == true`.
 """
-function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
+                        istemporary = false)
     if isgeneraltensor(ex)
         return instantiate_generaltensor(dst, β, ex, α, leftind, rightind, istemporary)
-    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # linear combination
+    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
+        # linear combination
         return instantiate_linearcombination(dst, β, ex, α, leftind, rightind, istemporary)
-    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 # multiplication: should be pairwise by now
+    elseif ex.head == :call && ex.args[1] == :* && length(ex.args) == 3
+        # multiplication: should be pairwise by now
         if isscalarexpr(ex.args[2])
-            return instantiate(dst, β, ex.args[3], Expr(:call, :*, instantiate_scalar(ex.args[2]), α), leftind, rightind, istemporary)
+            return instantiate(dst, β, ex.args[3], Expr(:call, :*,
+                        instantiate_scalar(ex.args[2]), α), leftind, rightind, istemporary)
         elseif isscalarexpr(ex.args[3])
-            return instantiate(dst, β, ex.args[2], Expr(:call, :*, α, instantiate_scalar(ex.args[3])), leftind, rightind, istemporary)
+            return instantiate(dst, β, ex.args[2], Expr(:call, :*, α,
+                        instantiate_scalar(ex.args[3])), leftind, rightind, istemporary)
         else
             return instantiate_contraction(dst, β, ex, α, leftind, rightind, istemporary)
         end
     elseif ex.head == :call && ex.args[1] == :/ && length(ex.args) == 3
-        return instantiate(dst, β, ex.args[2], Expr(:call, :/, α, instantiate_scalar(ex.args[3])), leftind, rightind, istemporary)
+        return instantiate(dst, β, ex.args[2], Expr(:call, :/, α,
+                            instantiate_scalar(ex.args[3])), leftind, rightind, istemporary)
     elseif ex.head == :call && ex.args[1] == :\ && length(ex.args) == 3
-        return instantiate(dst, β, ex.args[3], Expr(:call, :\, instantiate_scalar(ex.args[2]), α), leftind, rightind, istemporary)
+        return instantiate(dst, β, ex.args[3],
+        Expr(:call, :\, instantiate_scalar(ex.args[2]), α), leftind, rightind, istemporary)
     end
     throw(ArgumentError("problem with parsing $ex"))
 end
@@ -27,12 +38,13 @@ end
 """
     instantiate_eltype(ex::Expr)
 
-Make the tensor objects in the expression to be their types.
+Return the expression that promotes and gives the element-type of tensors.
 """
 function instantiate_eltype(ex::Expr)
     if istensor(ex)
         return Expr(:call, :eltype, gettensorobject(ex))
-    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* || ex.args[1] == :/)
+    elseif ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :- || ex.args[1] == :* ||
+                                    ex.args[1] == :/)
         if length(ex.args) > 2
             return Expr(:call, :promote_type, map(instantiate_eltype, ex.args[2:end])...)
         else
@@ -50,28 +62,12 @@ end
 instantiate_eltype(ex) = Expr(:call, :typeof, ex)
 
 """
-    instantiate_scalar(ex::Expr)
-
-Make every scalar in the expression `ex` to be an instance of a scalar explicitly.
-"""
-function instantiate_scalar(ex::Expr)
-    if ex.head == :call && ex.args[1] == :scalar
-        @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
-        return :(scalar($(instantiate(nothing, 0, ex.args[2], 1, [], [], true))))
-    elseif ex.head == :call
-        return Expr(ex.head, ex.args[1], map(instantiate_scalar, ex.args[2:end])...)
-    else
-        return Expr(ex.head, map(instantiate_scalar, ex.args)...)
-    end
-end
-instantiate_scalar(ex::Symbol) = ex
-instantiate_scalar(ex) = ex
-
-"""
     instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
                                 rightind::Vector{Any}, istemporary = false)
 
-
+Instantiate the generaltensor `ex` by returning the expression which implement the function
+`trace!` or `add!` explicitly. The output tensor `β * dst + α * ex` has left indices as
+`leftind` and right indices as `rightind`. The result is cached if `istemporary == true`.
 """
 function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
                                     rightind::Vector{Any}, istemporary = false)
@@ -88,12 +84,14 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         if istemporary
             initex = quote
                 $αsym = $α*$α2
-                $dst = cached_similar_from_indices($(QuoteNode(dst)), promote_type(eltype($src), typeof($αsym)), $p1, $p2, $src, $conjarg)
+                $dst = cached_similar_from_indices($(QuoteNode(dst)),
+                        promote_type(eltype($src), typeof($αsym)), $p1, $p2, $src, $conjarg)
             end
         else
             initex = quote
                 $αsym = $α*$α2
-                $dst = similar_from_indices(promote_type(eltype($src),typeof($αsym)), $p1, $p2, $src, $conjarg)
+                $dst = similar_from_indices(promote_type(eltype($src),typeof($αsym)), $p1,
+                                                $p2, $src, $conjarg)
             end
         end
     else
@@ -107,29 +105,39 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         if any(x->(x===nothing), (p1...,p2...,q1...,q2...)) ||
             !isperm((p1...,p2...,q1...,q2...)) ||
             length(srcind) != length(leftind) + length(rightind) + 2*length(traceind)
-            err = "trace: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
+            err = "trace: $(tuple(srcleftind..., srcrightind...)) to
+                        $(tuple(leftind..., rightind...)))"
             return :(throw(IndexError($err)))
         end
         return quote
             $initex
             trace!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2, $q1, $q2)
-            # $dst
         end
     else
         if any(x->(x===nothing), (p1..., p2...)) || !isperm((p1...,p2...)) ||
             length(srcind) != length(leftind) + length(rightind)
-            err = "add: $(tuple(srcleftind..., srcrightind...)) to $(tuple(leftind..., rightind...)))"
+            err = "add: $(tuple(srcleftind..., srcrightind...)) to
+                        $(tuple(leftind..., rightind...)))"
             return :(throw(IndexError($err)))
         end
         return quote
             $initex
             add!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2)
-            # $dst
         end
     end
 end
-function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
-    if ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-) # addition: add one by one
+
+"""
+    instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any},
+                                    rightind::Vector{Any}, istemporary = false)
+
+Instantiate the expression `ex` which is a linear combination of general tensors by doing
+the addtion or minus one by one. The output tensor has left indices as `leftind` and right
+indices as `rightind`. The result is cached if `istemporary == true`.
+"""
+function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any},
+                                            rightind::Vector{Any}, istemporary = false)
+    if ex.head == :call && (ex.args[1] == :+ || ex.args[1] == :-)
         if dst === nothing
             αnew = Expr(:call, :*, α, Expr(:call, :one, instantiate_eltype(ex)))
             ex1 = instantiate(dst, β, ex.args[2], αnew, leftind, rightind, istemporary)
@@ -154,7 +162,17 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
         throw(ArgumentError("unable to instantiate linear combination: $ex"))
     end
 end
-function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any}, istemporary = false)
+
+"""
+    instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
+                                rightind::Vector{Any}, istemporary = false)
+
+Instantiate the expression `ex` which is a sorted pairwise contraction of general tensors.
+The output tensor has left indices as `leftind` and right indices as `rightind`. The result
+is cached if `istemporary == true`.
+"""
+function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any},
+                                    rightind::Vector{Any}, istemporary = false)
     @assert ex.head == :call && ex.args[1] == :* && length(ex.args) == 3 &&
         istensorexpr(ex.args[2]) && istensorexpr(ex.args[3])
     exA = ex.args[2]
@@ -221,14 +239,17 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
         !(isperm((poA...,pcA...)) && length(indA) == length(poA)+length(pcA)) ||
         !(isperm((pcB...,poB...)) && length(indB) == length(poB)+length(pcB)) ||
         !(isperm((p1...,p2...)) && length(oindAB) == length(p1)+length(p2))
-        err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...,)) and $(tuple(indB...,)))"
+        err = "contraction: $(tuple(leftind..., rightind...)) from $(tuple(indA...,))
+                and $(tuple(indB...,)))"
         return :(throw(IndexError($err)))
     end
     if dst === nothing
         if istemporary
-            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
+            initC = :($symC = cached_similar_from_indices($(QuoteNode(symC)), $symTC,
+                            $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
         else
-            initC = :($symC = similar_from_indices($symTC, $poA, $poB, $p1, $p2, $symA, $symB, $conjA, $conjB))
+            initC = :($symC = similar_from_indices($symTC, $poA, $poB, $p1, $p2,
+                            $symA, $symB, $conjA, $conjB))
         end
     else
         initC = :($symC = $dst)
@@ -242,6 +263,23 @@ function instantiate_contraction(dst, β, ex::Expr, α, leftind::Vector{Any}, ri
         contract!($α*$αA*$αB, $symA, $conjA, $symB, $conjB, $β, $symC,
                     $poA, $pcA, $poB, $pcB, $p1, $p2,
                     $((gensym(),gensym(),gensym())))
-        # $symC
     end
 end
+
+"""
+    instantiate_scalar(ex::Expr)
+
+Instantiate the scalar expression `ex`.
+"""
+function instantiate_scalar(ex::Expr)
+    if ex.head == :call && ex.args[1] == :scalar
+        @assert length(ex.args) == 2 && istensorexpr(ex.args[2])
+        return :(scalar($(instantiate(nothing, 0, ex.args[2], 1, [], [], true))))
+    elseif ex.head == :call
+        return Expr(ex.head, ex.args[1], map(instantiate_scalar, ex.args[2:end])...)
+    else
+        return Expr(ex.head, map(instantiate_scalar, ex.args)...)
+    end
+end
+instantiate_scalar(ex::Symbol) = ex
+instantiate_scalar(ex) = ex
