@@ -198,7 +198,7 @@ corresponding to indices `indleft` (`indright`) out of `(oindA..., oindB...)`. T
 operation `opA` (`opB`) acts as `conj` if `CA` (`CB`) equal `:C` or as the identity
 map if `CA` (`CB`) equal `:N`. Together, `(oindA..., cindA...)` is a permutation of
 1 to the number of indices of `A` and `(oindB..., cindB...)` is a permutation of 1 to the
-number of indices of `C`.
+number of indices of `B`.
 
 `length(cindA) == length(cindB)`, and `length(oindA)+length(oindB)` equals the number of
 indices of `C` and `(indleft..., indright...)` is a permutation of `1` ot the number of

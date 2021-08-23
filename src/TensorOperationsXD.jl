@@ -84,9 +84,9 @@ function default_cache_size()
 end
 
 # methods used for the cache: see implementation/tensorcache.jl for more info
-function memsize end
-function similar_from_indices end
-function similarstructure_from_indices end
+#function memsize end
+#function similar_from_indices end
+#function similarstructure_from_indices end
 
 taskid() = convert(UInt, pointer_from_objref(current_task()))
 
@@ -108,7 +108,8 @@ end
 
 (Re)-enable the cache for further use; set the maximal size `maxsize` (as number of bytes)
 or relative size `maxrelsize`, as a fraction between 0 and 1, resulting in
-`maxsize = floor(Int, maxrelsize * Sys.total_memory())`. Default value is `maxsize = 2^30` bytes, which amounts to 1 gigabyte of memory.
+`maxsize = floor(Int, maxrelsize * Sys.total_memory())`. Default value is `maxsize = 2^30`
+bytes, which amounts to 1 gigabyte of memory.
 """
 function enable_cache(; maxsize::Int = -1, maxrelsize::Real = 0.0)
     if maxsize == -1 && maxrelsize == 0.0
@@ -141,7 +142,6 @@ Return the current memory size (in bytes) of all the objects in the cache.
 cachesize() = cache.currentsize
 
 # Initialization
-#-----------------
 function __init__()
     resize!(cache; maxsize = default_cache_size())
 
@@ -171,7 +171,6 @@ function __init__()
 end
 
 # Some precompile statements
-#----------------------------
 function _precompile_()
     AVector = Vector{Any}
     for N = 1:8
