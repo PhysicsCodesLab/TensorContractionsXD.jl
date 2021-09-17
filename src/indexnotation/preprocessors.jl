@@ -11,6 +11,18 @@ function replaceindices((@nospecialize f), ex::Expr)
                 return ex
             elseif isa(ex.args[2], Expr) && ex.args[2].head == :parameters
                 # A[a,b,...;c,d,...]
+                # > dump(:(A[a,b;c,d]))
+                # > Expr
+                # > head: Symbol ref
+                # > args: Array{Any}((4,))
+                # > 1: Symbol A
+                # > 2: Expr
+                # >   head: Symbol parameters
+                # >   args: Array{Any}((2,))
+                # >   1: Symbol c
+                # >   2: Symbol d
+                # > 3: Symbol a
+                # > 4: Symbol b
                 arg2 = ex.args[2]
                 return Expr(ex.head, ex.args[1],
                             Expr(arg2.head, map(f, arg2.args)...),
@@ -42,7 +54,8 @@ replaceindices((@nospecialize f), ex) = ex
     normalizeindex(ex)
 
 Make the input index `ex` to be a symbol or Int type instance. Mainly deal with the index
-in the form with a prime. Throw error if the form of the index is not allowed.
+in the form with a prime, i.e., change the `Expr(:prime,:a)` to `:a′` which is a symbol.
+Throw error if the form of the index is not allowed.
 """
 function normalizeindex(ex)
     if isa(ex, Symbol) || isa(ex, Int)
@@ -69,10 +82,9 @@ Replace all tensor objects by a function of that object, and the arguments of th
 expression `ex`.
 """
 function replacetensorobjects(f, ex::Expr)
-    # first try to replace ex completely
     # first try to replace ex completely:
-    # this needed if `ex` is a tensor object that appears outside an actual tensor expression
-    # in a 'regular' block of code
+    # this needed if `ex` is a tensor object that appears outside an actual tensor
+    # expression in a 'regular' block of code
     ex2 = f(ex, nothing, nothing)
     ex2 !== ex && return ex2
     if istensor(ex)
@@ -92,12 +104,11 @@ Change each term of the expression `ex` to its conjugation.
 function conjexpr(ex::Expr)
     if ex.head == :call && ex.args[1] == :conj
         return ex.args[2]
-    elseif isgeneraltensor(ex) || isscalarexpr(ex)
+    elseif isgeneraltensor(ex) || isscalarexpr(ex) # here is no conj in input ex
         return Expr(:call, :conj, ex)
-    elseif ex.head == :call && (ex.args[1] == :* || ex.args[1] == :+ || ex.args[1] == :-)
-        return Expr(ex.head, ex.args[1], map(conjexpr, ex.args[2:end])...)
-    elseif ex.head == :call && (ex.args[1] == :/ || ex.args[1] == :\)
-        return Expr(ex.head, ex.args[1], map(conjexpr, ex.args[2:end])...)
+    elseif ex.head == :call && (ex.args[1] == :* || ex.args[1] == :+ || ex.args[1] == :- ||
+                                ex.args[1] == :/ || ex.args[1] == :\)
+        return Expr(:call, ex.args[1], map(conjexpr, ex.args[2:end])...)
     else
         error("cannot conjugate expression: $ex")
     end
@@ -126,7 +137,8 @@ expandconj(ex) = ex
 """
     explicitscalar(ex::Expr)
 
-Wrap all tensor expressions with zero output indices in scalar call.
+Wrap all tensor expressions with zero output indices in scalar call, e.g., map `A[]` to
+`scalar(A[])`.
 """
 function explicitscalar(ex::Expr)
     ex = Expr(ex.head, map(explicitscalar, ex.args)...)
@@ -146,6 +158,23 @@ Return the expression that contains:
 1. Assign all existing tensor objects to their corresponding generated objects.
 2. Replace all objects in the `ex` with the generated ones.
 3. Change the objects of the newly created tensors back to their original names.
+
+# Examples
+```jldoctest
+julia> ex = :(A[a,b] := B[a,c,f]*C[c,b,f])
+:($(Expr(:(:=), :(A[a, b]), :(B[a, c, f] * C[c, b, f]))))
+julia> TO.extracttensorobjects(ex)
+quote
+    #= /Users/xdong/.julia/packages/TensorOperationsXD/oHgFV/src/indexnotation/preprocessors.jl:160 =# @notensor begin
+            var"##266" = B
+            var"##267" = C
+        end
+    $(Expr(:(:=), :(var"##268"[a, b]), :(var"##266"[a, c, f] * var"##267"[c, b, f])))
+    #= /Users/xdong/.julia/packages/TensorOperationsXD/oHgFV/src/indexnotation/preprocessors.jl:161 =# @notensor begin
+            A = var"##268"
+        end
+end
+```
 """
 function extracttensorobjects(ex::Expr)
     inputtensors = getinputtensorobjects(ex)

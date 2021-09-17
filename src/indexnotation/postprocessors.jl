@@ -1,7 +1,7 @@
 """
     _flatten(ex::Expr)
 
-Remove the `:block` in the inner expression and put it at the most out level.
+Remove the `:block` in the inner expression and put it at top level.
 """
 function _flatten(ex::Expr)
     head = ex.head
@@ -52,8 +52,8 @@ const tensoroperationsfunctions = (:similar_from_indices,
 """
     addtensoroperations(ex::Expr)
 
-Provide the path to the true implementation functions of the tensor operations that are
-instantiated in the expression.
+Provide the path to the functions of the tensor operations that are used in instantiating
+the tensor expressions.
 """
 function addtensoroperations(ex::Expr)
     if ex.head == :call && ex.args[1] in tensoroperationsfunctions

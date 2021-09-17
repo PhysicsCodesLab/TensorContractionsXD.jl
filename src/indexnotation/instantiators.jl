@@ -2,10 +2,12 @@
     instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
                     istemporary = false)
 
-Instantiate tensor expression `ex` by implementing the function `add!`, `trace!` and
-`contract!` explicitly. Return `β * dst + α * ex` as a tensor with left indices as `leftind`
-from `ex` and with right indices as `rightind` from `ex`. The result is cached if
-`istemporary == true`.
+Instantiate tensor expression `ex`, which usually appears on the right hand side of an
+assignment or definition, with the functions they represent, e.g., `add!`, `trace!`,
+`contract!`. Return `β * dst + α * ex` as a tensor with left indices as `leftind` and with
+right indices as `rightind`, where `leftind` and `rightind` are usually the left and right
+indices of the tensor with object `dst` on the left hand side of the assignment or
+definition. The result is cached if `istemporary == true`.
 """
 function instantiate(dst, β, ex::Expr, α, leftind::Vector{Any}, rightind::Vector{Any},
                         istemporary = false)
@@ -65,9 +67,9 @@ instantiate_eltype(ex) = Expr(:call, :typeof, ex)
     instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
                                 rightind::Vector{Any}, istemporary = false)
 
-Instantiate the generaltensor `ex` by returning the expression which implement the function
-`trace!` or `add!` explicitly. The output tensor `β * dst + α * ex` has left indices as
-`leftind` and right indices as `rightind`. The result is cached if `istemporary == true`.
+Instantiate the generaltensor `ex` by the functions they represent, e.g., `trace!` or
+`add!`. The output tensor `β * dst + α * ex` has left indices as `leftind` and right indices
+as `rightind`. The result is cached if `istemporary == true`.
 """
 function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
                                     rightind::Vector{Any}, istemporary = false)
@@ -111,7 +113,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         end
         return quote
             $initex
-            trace!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2, $q1, $q2)
+            trace!($αsym, $src, $conjarg, $β, $dst, $p1, $p2, $q1, $q2)
         end
     else
         if any(x->(x===nothing), (p1..., p2...)) || !isperm((p1...,p2...)) ||
@@ -122,7 +124,7 @@ function instantiate_generaltensor(dst, β, ex::Expr, α, leftind::Vector{Any},
         end
         return quote
             $initex
-            add!($α * $α2, $src, $conjarg, $β, $dst, $p1, $p2)
+            add!($αsym, $src, $conjarg, $β, $dst, $p1, $p2)
         end
     end
 end
@@ -131,9 +133,9 @@ end
     instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any},
                                     rightind::Vector{Any}, istemporary = false)
 
-Instantiate the expression `ex` which is a linear combination of general tensors by doing
-the addtion or minus one by one. The output tensor has left indices as `leftind` and right
-indices as `rightind`. The result is cached if `istemporary == true`.
+Instantiate the expression `ex` which is a linear combination of tensor expressions by
+instantiating each term of it one by one. The output tensor has left indices as `leftind`
+and right indices as `rightind`. The result is cached if `istemporary == true`.
 """
 function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{Any},
                                             rightind::Vector{Any}, istemporary = false)
@@ -156,7 +158,6 @@ function instantiate_linearcombination(dst, β, ex::Expr, α, leftind::Vector{An
         end
         return quote
             $returnex
-            # $dst
         end
     else
         throw(ArgumentError("unable to instantiate linear combination: $ex"))

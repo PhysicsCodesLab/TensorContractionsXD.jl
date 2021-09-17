@@ -170,7 +170,7 @@ end
     getnewtensorobjects(ex)
 
 Return a list of tensor objects which are newly created, i.e., appear on the lhs of
-definitions).
+definitions.
 """
 function getnewtensorobjects(ex)
     list = Any[]
@@ -192,8 +192,8 @@ end
 """
     getoutputtensorobjects(ex)
 
-Return a list of tensor objects which already exist and are outputs, i.e., appear in the lhs
-of assignments.
+Return a list of tensor objects which already exist before `ex` and are outputs, i.e.,
+appear in the lhs of assignments but not be created in `ex`.
 """
 function getoutputtensorobjects(ex)
     list = Any[]
@@ -220,8 +220,8 @@ end
 """
     getinputtensorobjects(ex)
 
-Return a list of tensor objects which already exist and are inputs, i.e., appear in the rhs
-of assignments and definitions.
+Return a list of tensor objects which already exist before `ex` and are inputs, i.e., appear
+in the rhs of assignments and definitions but not be created in `ex`.
 """
 function getinputtensorobjects(ex)
     list = Any[]
@@ -258,7 +258,7 @@ end
 """
     getindices(ex::Expr)
 
-For any tensor expression, get the list of uncontracted indices that would remain after
+For any tensor expression, get the list of untraced indices that would remain after
 evaluating that expression.
 """
 function getindices(ex::Expr)

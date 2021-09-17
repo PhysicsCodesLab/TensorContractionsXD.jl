@@ -1,5 +1,10 @@
 # For `AbstractArray`, we do not differentiate between left and right indices:
 
+"""
+    memsize(A::Array)
+
+return the size of the array in bytes, i.e., `sizeof(A) == length(A)*sizeof(eltype(A))`.
+"""
 memsize(A::Array) = sizeof(A)
 # hoping that this works for any `AbstractArray` to which it is applied:
 memsize(A::AbstractArray) = memsize(parent(A))
@@ -357,6 +362,13 @@ function isblascontractable(A::AbstractStridedView, p1::IndexTuple, p2::IndexTup
     end
 end
 
+"""
+    _canfuse(dims::Dims{N}, strides::Dims{N}) where {N}
+
+Check that for `i = 1:N-1` if all `strides[i+1] == dims[i]*strides[i]`. If yes, return a
+tuple with (true, total size, first stride). In this case, the memory of the array is
+continuous, and can fuse into a vector with total size and the first stride.
+"""
 _canfuse(::Dims{0}, ::Dims{0}) = true, 1, 1
 _canfuse(dims::Dims{1}, strides::Dims{1}) = true, dims[1], strides[1]
 function _canfuse(dims::Dims{N}, strides::Dims{N}) where {N}

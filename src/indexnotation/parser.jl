@@ -51,10 +51,10 @@ end
 """
     defaulttreebuilder(network)
 
-The input `network` is a list of the open indices of each tensor in a tensor-contraction
-expression, and the `length(network)` is the number of tensors in the expression. Return
-`tree` in the form e.g. `Any[Any[Any[Any[1, 2], 3], 4], 5]` if `length(network) == 5`. This
-default tree contracts the tensors in the expression two-by-two from left to right.
+The input `network` is a list of the untraced indices of each tensorexpression in a tensor
+contraction expression, and the `length(network)` is the number of tensorexpressions to be
+contracted. Return `tree` in the form e.g. `Any[Any[Any[Any[1, 2], 3], 4], 5]` if
+`length(network) == 5`.
 """
 function defaulttreebuilder(network)
     if isnconstyle(network)
@@ -71,10 +71,12 @@ end
 """
     defaulttreesorter(args, tree)
 
-Sort the sequencee of the contractions as given by the input `tree` by changing the
-positions of the tensors in the expreesion. The input `args` is a list of the tensors in the
-original tensor-contraction expression. The returned expression has the form e.g.
-`(((A[a,b]*B[c,d])*C[a,c]))*D[b,f])`.
+Sort the sequencee of the contractions as given by the input `tree` (default in the form
+`Any[Any[Any[Any[1, 2], 3], 4], 5]` if `length(network) == 5`) by changing the
+positions of the tensor expressions to be contracted. The input `args` is a list of the
+tensor expressions to be contracted. The returned expression has the form e.g. (default)
+`(((A[a,b]*B[c,d])*C[a,c]))*D[b,f])`. This default tree contracts the tensors in the
+expression two-by-two from left to right.
 """
 function defaulttreesorter(args, tree)
     if isa(tree, Int)
@@ -88,8 +90,8 @@ end
 """
     processcontractions(ex::Expr, treebuilder, treesorter)
 
-Sort the contractions based on the `treebuilder` and `treesorter` if the number of tensors
-in the contration expression is larger than two.
+Sort the contractions based on the `treebuilder` and `treesorter` if the number of tensor
+expressions to be contracted is larger than two.
 """
 function processcontractions(ex::Expr, treebuilder, treesorter)
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
@@ -113,13 +115,21 @@ processcontractions(ex, treebuilder, treesorter) = ex # if `ex` is not an Expr d
 """
     tensorify(ex::Expr)
 
-Functions for parsing and processing tensor expressions. Instantiate the tensor operations
-by implementing the functions like `add!`, `trace!` and `contract!` explicitly in the
-returned expression.
+Functions for parsing and processing tensor expressions. Change the tensor expressions to
+the actual functions like `add!`, `trace!` and `contract!` they represent.
 """
 function tensorify(ex::Expr)
     if ex.head == :macrocall && ex.args[1] == Symbol("@notensor")
         return ex.args[3]
+        # > dump(:(@notensor A))
+        # > Expr
+        #     head: Symbol macrocall
+        #     args: Array{Any}((3,))
+        #       1: Symbol @notensor
+        #       2: LineNumberNode
+        #         line: Int64 1
+        #         file: Symbol REPL[29]
+        #       3: Symbol A
     end
     # assignment case
     if isassignment(ex) || isdefinition(ex)
@@ -170,7 +180,7 @@ function tensorify(ex::Expr)
     if ex.head == :function
         return Expr(ex.head, ex.args[1], tensorify(ex.args[2]))
     end
-    # constructions of the form: a = @tensor ...
+    # constructions of the form: a = @tensor ..., where a is a scalar
     if isscalarexpr(ex)
         return instantiate_scalar(ex)
     end
