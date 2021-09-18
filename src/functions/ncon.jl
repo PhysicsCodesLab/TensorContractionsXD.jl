@@ -13,7 +13,7 @@ should appear only once.
 Optional arguments in another list with the same length, `conjlist`, whose entries are of
 type `Bool` and indicate whether the corresponding tensor object should be conjugated
 (`true`) or not (`false`). Finally, a `Symbol` can be provided which provides a hook into
-the global LRU cache of TensorOperationsXD.jl to store temporaries. This symbol should be
+the global LRU cache of TensorContractionsXD.jl to store temporaries. This symbol should be
 unique for every `ncon` call withing a running application.
 
 By default, contractions are performed in the order such that the indices being contracted

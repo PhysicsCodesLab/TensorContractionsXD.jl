@@ -1,7 +1,7 @@
 # test simple methods
 #---------------------
-withblas = TensorOperationsXD.use_blas() ? "with" : "without"
-withcache = TensorOperationsXD.use_cache() ? "with" : "without"
+withblas = TensorContractionsXD.use_blas() ? "with" : "without"
+withcache = TensorContractionsXD.use_cache() ? "with" : "without"
 @testset "Method syntax $withblas BLAS and $withcache cache" begin
     @testset "tensorcopy" begin
         A = randn(Float64, (3,5,4,6))
@@ -9,8 +9,8 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
         C1 = permutedims(A,p)
         C2 = @inferred tensorcopy(A,(1:4...,),(p...,))
         @test C1 ≈ C2
-        @test_throws TensorOperationsXD.IndexError tensorcopy(A,1:3,1:4)
-        @test_throws TensorOperationsXD.IndexError tensorcopy(A,[1,2,2,4],1:4)
+        @test_throws TensorContractionsXD.IndexError tensorcopy(A,1:3,1:4)
+        @test_throws TensorContractionsXD.IndexError tensorcopy(A,[1,2,2,4],1:4)
     end
 
     @testset "tensoradd" begin
@@ -55,8 +55,8 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
         end
         @test C1 ≈ C3
         @test C2 ≈ C3
-        @test_throws TensorOperationsXD.IndexError tensorcontract(A,[:a,:b,:c,:d],B,[:c,:f,:b,:g])
-        @test_throws TensorOperationsXD.IndexError tensorcontract(A,[:a,:b,:c,:a,:e],B,[:c,:f,:b,:g])
+        @test_throws TensorContractionsXD.IndexError tensorcontract(A,[:a,:b,:c,:d],B,[:c,:f,:b,:g])
+        @test_throws TensorContractionsXD.IndexError tensorcontract(A,[:a,:b,:c,:a,:e],B,[:c,:f,:b,:g])
     end
 
     @testset "tensorproduct" begin
@@ -65,8 +65,8 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
         C1 = reshape((@inferred tensorproduct(A,(1,2,3,4),B,(5,6,7,8),(1,2,5,6,3,4,7,8))),(5*5*5*5,5*5*5*5))
         C2 = kron(reshape(B,(25,25)),reshape(A,(25,25)))
         @test C1 ≈ C2
-        @test_throws TensorOperationsXD.IndexError tensorproduct(A,[:a,:b,:c,:d],B,[:d,:e,:f,:g])
-        @test_throws TensorOperationsXD.IndexError tensorproduct(A,[:a,:b,:c,:d],B,[:e,:f,:g,:h],[:a,:b,:c,:d,:e,:f,:g,:i])
+        @test_throws TensorContractionsXD.IndexError tensorproduct(A,[:a,:b,:c,:d],B,[:d,:e,:f,:g])
+        @test_throws TensorContractionsXD.IndexError tensorproduct(A,[:a,:b,:c,:d],B,[:e,:f,:g,:h],[:a,:b,:c,:d,:e,:f,:g,:i])
     end
 
     # test in-place methods
@@ -82,12 +82,12 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
         C = view(Cbig,13 .+ (0:6),11 .+ 4*(0:9),15 .+ 4*(0:8),4 .+ 3*(0:6))
         Acopy = tensorcopy(A,1:4,1:4)
         Ccopy = tensorcopy(C,1:4,1:4)
-        TensorOperationsXD.tensorcopy!(A,1:4,C,p)
-        TensorOperationsXD.tensorcopy!(Acopy,1:4,Ccopy,p)
+        TensorContractionsXD.tensorcopy!(A,1:4,C,p)
+        TensorContractionsXD.tensorcopy!(Acopy,1:4,Ccopy,p)
         @test C ≈ Ccopy
-        @test_throws TensorOperationsXD.IndexError TensorOperationsXD.tensorcopy!(A,1:3,C,p)
-        @test_throws DimensionMismatch TensorOperationsXD.tensorcopy!(A,p,C,p)
-        @test_throws TensorOperationsXD.IndexError TensorOperationsXD.tensorcopy!(A,1:4,C,[1,1,2,3])
+        @test_throws TensorContractionsXD.IndexError TensorContractionsXD.tensorcopy!(A,1:3,C,p)
+        @test_throws DimensionMismatch TensorContractionsXD.tensorcopy!(A,p,C,p)
+        @test_throws TensorContractionsXD.IndexError TensorContractionsXD.tensorcopy!(A,1:4,C,[1,1,2,3])
     end
 
     @testset "tensoradd!" begin
@@ -100,12 +100,12 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
         Ccopy = tensorcopy(C,1:4,1:4)
         α = randn(Float64)
         β = randn(Float64)
-        TensorOperationsXD.tensoradd!(α,A,1:4,β,C,p)
+        TensorContractionsXD.tensoradd!(α,A,1:4,β,C,p)
         Ccopy = β*Ccopy+α*Acopy
         @test C ≈ Ccopy
-        @test_throws TensorOperationsXD.IndexError TensorOperationsXD.tensoradd!(1.2,A,1:3,0.5,C,p)
-        @test_throws DimensionMismatch TensorOperationsXD.tensoradd!(1.2,A,p,0.5,C,p)
-        @test_throws TensorOperationsXD.IndexError TensorOperationsXD.tensoradd!(1.2,A,1:4,0.5,C,[1,1,2,3])
+        @test_throws TensorContractionsXD.IndexError TensorContractionsXD.tensoradd!(1.2,A,1:3,0.5,C,p)
+        @test_throws DimensionMismatch TensorContractionsXD.tensoradd!(1.2,A,p,0.5,C,p)
+        @test_throws TensorContractionsXD.IndexError TensorContractionsXD.tensoradd!(1.2,A,1:4,0.5,C,[1,1,2,3])
     end
 
     @testset "tensortrace!" begin
@@ -117,16 +117,16 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
         Bcopy = tensorcopy(B,1:2)
         α = randn(Float64)
         β = randn(Float64)
-        TensorOperationsXD.tensortrace!(α,A,[:a,:b,:c,:a],β,B,[:b,:c])
+        TensorContractionsXD.tensortrace!(α,A,[:a,:b,:c,:a],β,B,[:b,:c])
         Bcopy = β*Bcopy
         for i = 1 .+ (0:8)
             Bcopy += α*view(A,i,:,:,i)
         end
         @test B ≈ Bcopy
-        @test_throws TensorOperationsXD.IndexError TensorOperationsXD.tensortrace!(α,A,[:a,:b,:c],β,B,[:b,:c])
-        @test_throws DimensionMismatch TensorOperationsXD.tensortrace!(α,A,[:a,:b,:c,:a],β,B,[:c,:b])
-        @test_throws TensorOperationsXD.IndexError TensorOperationsXD.tensortrace!(α,A,[:a,:b,:a,:a],β,B,[:c,:b])
-        @test_throws DimensionMismatch TensorOperationsXD.tensortrace!(α,A,[:a,:b,:a,:c],β,B,[:c,:b])
+        @test_throws TensorContractionsXD.IndexError TensorContractionsXD.tensortrace!(α,A,[:a,:b,:c],β,B,[:b,:c])
+        @test_throws DimensionMismatch TensorContractionsXD.tensortrace!(α,A,[:a,:b,:c,:a],β,B,[:c,:b])
+        @test_throws TensorContractionsXD.IndexError TensorContractionsXD.tensortrace!(α,A,[:a,:b,:a,:a],β,B,[:c,:b])
+        @test_throws DimensionMismatch TensorContractionsXD.tensortrace!(α,A,[:a,:b,:a,:c],β,B,[:c,:b])
     end
 
     @testset "tensorcontract!" begin
@@ -147,11 +147,11 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
                 Ccopy[d,a,e] += α*A[a,b,c,d]*conj(B[c,e,b])
             end
         end
-        TensorOperationsXD.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'C',β,C,[:d,:a,:e])
+        TensorContractionsXD.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'C',β,C,[:d,:a,:e])
         @test C ≈ Ccopy
-        @test_throws TensorOperationsXD.IndexError TensorOperationsXD.tensorcontract!(α,A,[:a,:b,:c,:a],'N',B,[:c,:e,:b],'N',β,C,[:d,:a,:e])
-        @test_throws TensorOperationsXD.IndexError TensorOperationsXD.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:b],'N',β,C,[:d,:a,:e])
-        @test_throws TensorOperationsXD.IndexError TensorOperationsXD.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',β,C,[:d,:e])
-        @test_throws DimensionMismatch TensorOperationsXD.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',β,C,[:d,:e,:a])
+        @test_throws TensorContractionsXD.IndexError TensorContractionsXD.tensorcontract!(α,A,[:a,:b,:c,:a],'N',B,[:c,:e,:b],'N',β,C,[:d,:a,:e])
+        @test_throws TensorContractionsXD.IndexError TensorContractionsXD.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:b],'N',β,C,[:d,:a,:e])
+        @test_throws TensorContractionsXD.IndexError TensorContractionsXD.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',β,C,[:d,:e])
+        @test_throws DimensionMismatch TensorContractionsXD.tensorcontract!(α,A,[:a,:b,:c,:d],'N',B,[:c,:e,:b],'N',β,C,[:d,:e,:a])
     end
 end

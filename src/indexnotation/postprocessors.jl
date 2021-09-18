@@ -57,7 +57,7 @@ the tensor expressions.
 """
 function addtensoroperations(ex::Expr)
     if ex.head == :call && ex.args[1] in tensoroperationsfunctions
-        return Expr(ex.head, GlobalRef(TensorOperationsXD, ex.args[1]),
+        return Expr(ex.head, GlobalRef(TensorContractionsXD, ex.args[1]),
                         (addtensoroperations(ex.args[i]) for i in 2:length(ex.args))...)
     else
         return Expr(ex.head, (addtensoroperations(e) for e in ex.args)...)

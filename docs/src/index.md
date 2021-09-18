@@ -1,4 +1,4 @@
-# TensorOperationsXD.jl
+# TensorContractionsXD.jl
 
 *Fast tensor operations using a convenient Einstein index notation.*
 
@@ -10,7 +10,7 @@ Depth = 4
 ```
 ## Installation
 
-Install with the package manager, `pkg> add TensorOperationsXD`.
+Install with the package manager, `pkg> add TensorContractionsXD`.
 
 ## Package features
 
@@ -26,7 +26,7 @@ Install with the package manager, `pkg> add TensorOperationsXD`.
     dynamic networks or index specifications.
 *   Support for any Julia Base array which qualifies as strided, i.e. such that its entries
     are layed out according to a regular pattern in memory. The only exception are
-    `ReinterpretedArray` objects (implementation provided by Strided.jl, see below).
+    `ReinterpretedArray` objects (implementation provided by StridedTensorXD.jl, see below).
     Additionally, `Diagonal` objects whose underlying diagonal data is stored as a strided
     vector are supported. This facilitates tensor contractions where one of the operands is
     e.g. a diagonal matrix of singular values or eigenvalues, which are returned as a
@@ -37,10 +37,10 @@ Install with the package manager, `pkg> add TensorOperationsXD`.
 *   Implementation can easily be extended to other types, by overloading a small set of
     methods.
 *   Efficient implementation of a number of basic tensor operations (see below), by relying
-    on [Strided.jl](https://github.com/Jutho/Strided.jl) and `gemm` from BLAS for
+    on [StridedTensorXD.jl](https://github.com/Jutho/StridedTensorXD.jl) and `gemm` from BLAS for
     contractions. The latter is optional but on by default, it can be controlled by a
     package wide setting via `enable_blas()` and `disable_blas()`. If BLAS is disabled or
-    cannot be applied (e.g. non-matching or non-standard numerical types), Strided.jl is
+    cannot be applied (e.g. non-matching or non-standard numerical types), StridedTensorXD.jl is
     also used for the contraction.
 *   A package wide cache for storing temporary arrays that are generated when evaluating
     complex tensor expressions within the `@tensor` macro (based on the implementation of
@@ -49,7 +49,7 @@ Install with the package manager, `pkg> add TensorOperationsXD`.
 
 ## Tensor operations
 
-TensorOperationsXD.jl is centered around 3 basic tensor operations, i.e. primitives in which
+TensorContractionsXD.jl is centered around 3 basic tensor operations, i.e. primitives in which
 every more complicated tensor expression is deconstructed.
 
 1.  **addition:** Add a (possibly scaled version of) one array to another array, where the
@@ -57,13 +57,13 @@ every more complicated tensor expression is deconstructed.
     normal array addition and index permutation. It includes as a special case copying one
     array into another with permuted indices.
 
-    The actual implementation is provided by [Strided.jl](https://github.com/Jutho/
-    Strided.jl), which contains multithreaded implementations and cache-friendly blocking
+    The actual implementation is provided by [StridedTensorXD.jl](https://github.com/Jutho/
+    StridedTensorXD.jl), which contains multithreaded implementations and cache-friendly blocking
     strategies for an optimal efficiency.
 
 2.  **trace or inner contraction:** Perform a trace/contraction over pairs of indices of an
     array, where the result is a lower-dimensional array. As before, the actual
-    implementation is provided by [Strided.jl](https://github.com/Jutho/Strided.jl).
+    implementation is provided by [StridedTensorXD.jl](https://github.com/Jutho/StridedTensorXD.jl).
 
 3.  **contraction:** Performs a general contraction of two tensors, where some indices of
     one array are paired with corresponding indices in a second array. This is typically

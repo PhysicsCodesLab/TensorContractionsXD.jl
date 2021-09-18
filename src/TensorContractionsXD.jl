@@ -1,8 +1,8 @@
 module TensorOperationsXD
 
-using TupleTools
-using Strided
-using Strided: AbstractStridedView, UnsafeStridedView
+using TupleLabXD
+using StridedTensorXD
+using StridedTensorXD: AbstractStridedView, UnsafeStridedView
 using LinearAlgebra
 using LinearAlgebra: mul!, BLAS.BlasFloat
 using LRUCache

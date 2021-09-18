@@ -174,19 +174,19 @@ function _trace!(α, A::AbstractStridedView, β, C::AbstractStridedView,
 
     if α != 1
         if β == 0
-            Strided._mapreducedim!(x->α*x, +, zero, newsize, (C, A2))
+            StridedTensorXD._mapreducedim!(x->α*x, +, zero, newsize, (C, A2))
         elseif β == 1
-            Strided._mapreducedim!(x->α*x, +, nothing, newsize, (C, A2))
+            StridedTensorXD._mapreducedim!(x->α*x, +, nothing, newsize, (C, A2))
         else
-            Strided._mapreducedim!(x->α*x, +, y->β*y, newsize, (C, A2))
+            StridedTensorXD._mapreducedim!(x->α*x, +, y->β*y, newsize, (C, A2))
         end
     else
         if β == 0
-            return Strided._mapreducedim!(identity, +, zero, newsize, (C, A2))
+            return StridedTensorXD._mapreducedim!(identity, +, zero, newsize, (C, A2))
         elseif β == 1
-            Strided._mapreducedim!(identity, +, nothing, newsize, (C, A2))
+            StridedTensorXD._mapreducedim!(identity, +, nothing, newsize, (C, A2))
         else
-            Strided._mapreducedim!(identity, +, y->β*y, newsize, (C, A2))
+            StridedTensorXD._mapreducedim!(identity, +, y->β*y, newsize, (C, A2))
         end
     end
     return C
@@ -225,9 +225,9 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
         indCinoAB::IndexTuple, syms::Union{Nothing, NTuple{3,Symbol}} = nothing)
 
     TC = eltype(C)
-    ipC = TupleTools.invperm(indCinoAB)
-    oindAinC = TupleTools.getindices(ipC, _trivtuple(oindA))
-    oindBinC = TupleTools.getindices(ipC, length(oindA) .+ _trivtuple(oindB))
+    ipC = TupleLabXD.invperm(indCinoAB)
+    oindAinC = TupleLabXD.getindices(ipC, _trivtuple(oindA))
+    oindBinC = TupleLabXD.getindices(ipC, length(oindA) .+ _trivtuple(oindB))
     if use_blas() && TC <: BlasFloat
         # check if it is beneficial to change the role of A and B
         ibc = isblascontractable
@@ -251,10 +251,10 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
     end
 
     pA = (oindA...,cindA...)
-    (length(pA) == ndims(A) && TupleTools.isperm(pA)) ||
+    (length(pA) == ndims(A) && TupleLabXD.isperm(pA)) ||
         throw(IndexError("invalid permutation of length $(ndims(A)): $pA"))
     pB = (oindB...,cindB...)
-    (length(pB) == ndims(B) && TupleTools.isperm(pB)) ||
+    (length(pB) == ndims(B) && TupleLabXD.isperm(pB)) ||
         throw(IndexError("invalid permutation of length $(ndims(B)): $pB"))
     (length(oindA) + length(oindB) == ndims(C)) ||
         throw(IndexError("non-matching output indices in contraction"))
@@ -265,14 +265,14 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
     sizeB = size(B)
     sizeC = size(C)
 
-    csizeA = TupleTools.getindices(sizeA, cindA)
-    csizeB = TupleTools.getindices(sizeB, cindB)
-    osizeA = TupleTools.getindices(sizeA, oindA)
-    osizeB = TupleTools.getindices(sizeB, oindB)
+    csizeA = TupleLabXD.getindices(sizeA, cindA)
+    csizeB = TupleLabXD.getindices(sizeB, cindB)
+    osizeA = TupleLabXD.getindices(sizeA, oindA)
+    osizeB = TupleLabXD.getindices(sizeB, oindB)
 
     csizeA == csizeB ||
         throw(DimensionMismatch("non-matching sizes in contracted dimensions"))
-    TupleTools.getindices((osizeA..., osizeB...), indCinoAB) == size(C) ||
+    TupleLabXD.getindices((osizeA..., osizeB...), indCinoAB) == size(C) ||
         throw(DimensionMismatch("non-matching sizes in uncontracted dimensions"))
 
     if use_blas() && TC <: BlasFloat
@@ -304,9 +304,9 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, CB::Symbo
             cindB = _trivtuple(cindB)
             oindB = _trivtuple(oindB) .+ length(cindB)
         end
-        ipC = TupleTools.invperm(indCinoAB)
-        oindAinC = TupleTools.getindices(ipC, _trivtuple(oindA))
-        oindBinC = TupleTools.getindices(ipC, length(oindA) .+ _trivtuple(oindB))
+        ipC = TupleLabXD.invperm(indCinoAB)
+        oindAinC = TupleLabXD.getindices(ipC, _trivtuple(oindA))
+        oindBinC = TupleLabXD.getindices(ipC, length(oindA) .+ _trivtuple(oindB))
         if isblascontractable(C, oindAinC, oindBinC, :D)
             C2 = C
             _blas_contract!(α, A2, CA2, B2, CB2, β, C2,
@@ -345,10 +345,10 @@ function isblascontractable(A::AbstractStridedView, p1::IndexTuple, p2::IndexTup
     eltype(A) <: LinearAlgebra.BlasFloat || return false
     sizeA = size(A)
     stridesA = strides(A)
-    sizeA1 = TupleTools.getindices(sizeA, p1)
-    sizeA2 = TupleTools.getindices(sizeA, p2)
-    stridesA1 = TupleTools.getindices(stridesA, p1)
-    stridesA2 = TupleTools.getindices(stridesA, p2)
+    sizeA1 = TupleLabXD.getindices(sizeA, p1)
+    sizeA2 = TupleLabXD.getindices(sizeA, p2)
+    stridesA1 = TupleLabXD.getindices(stridesA, p1)
+    stridesA2 = TupleLabXD.getindices(stridesA, p2)
 
     canfuse1, d1, s1 = _canfuse(sizeA1, stridesA1)
     canfuse2, d2, s2 = _canfuse(sizeA2, stridesA2)
@@ -416,7 +416,7 @@ function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, C
         β, C::AbstractArray, oindA, cindA, oindB, cindB, indCinoAB,
         osizeA, csizeA, osizeB, csizeB)
 
-    ipC = TupleTools.invperm(indCinoAB)
+    ipC = TupleLabXD.invperm(indCinoAB)
     if CA == :N
         opA = identity
     elseif CA == :C
@@ -447,25 +447,25 @@ function _native_contract!(α, A::AbstractArray, CA::Symbol, B::AbstractArray, C
         if α != 1
             op1 = (x,y) -> α*opA(x)*opB(y)
             if β == 0
-                Strided._mapreducedim!(op1, +, zero, tsize, (CS, AS, BS))
+                StridedTensorXD._mapreducedim!(op1, +, zero, tsize, (CS, AS, BS))
             elseif β == 1
-                Strided._mapreducedim!(op1, +, nothing, tsize, (CS, AS, BS))
+                StridedTensorXD._mapreducedim!(op1, +, nothing, tsize, (CS, AS, BS))
             else
-                Strided._mapreducedim!(op1, +, y->β*y, tsize, (CS, AS, BS))
+                StridedTensorXD._mapreducedim!(op1, +, y->β*y, tsize, (CS, AS, BS))
             end
         else
             op2 = (x,y) -> opA(x)*opB(y)
             if β == 0
                 if isbitstype(eltype(C))
-                    Strided._mapreducedim!(op2, +, zero, tsize, (CS, AS, BS))
+                    StridedTensorXD._mapreducedim!(op2, +, zero, tsize, (CS, AS, BS))
                 else
                     fill!(C, zero(eltype(C)))
-                    Strided._mapreducedim!(op2, +, nothing, tsize, (CS, AS, BS))
+                    StridedTensorXD._mapreducedim!(op2, +, nothing, tsize, (CS, AS, BS))
                 end
             elseif β == 1
-                Strided._mapreducedim!(op2, +, nothing, tsize, (CS, AS, BS))
+                StridedTensorXD._mapreducedim!(op2, +, nothing, tsize, (CS, AS, BS))
             else
-                Strided._mapreducedim!(op2, +, y->β*y, tsize, (CS, AS, BS))
+                StridedTensorXD._mapreducedim!(op2, +, y->β*y, tsize, (CS, AS, BS))
             end
         end
     end

@@ -18,7 +18,7 @@ with the function-based interface.
 The `@tensor` macro expands the given expression and immediately generates the code to
 create the necessary temporaries. It associates with each of them a random symbol
 (`gensym()`) and uses this as an identifier (together with the `Threads.threadid` of where it it is being evaluated) in a package wide global cache structure
-`TensorOperationsXD.cache`, the implementation of which is a least-recently used cache
+`TensorContractionsXD.cache`, the implementation of which is a least-recently used cache
 dictionary from [LRUCache.jl](https://github.com/JuliaCollections/
 LRUCache.jl). Thereto, it estimates the size of each object added to the cache
 using `Base.summarysize` and discards objects once a certain memory limit is reached.

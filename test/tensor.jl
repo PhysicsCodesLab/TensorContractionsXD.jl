@@ -1,7 +1,7 @@
 # test index notation using @tensor macro
 #-----------------------------------------
-withblas = TensorOperationsXD.use_blas() ? "with" : "without"
-withcache = TensorOperationsXD.use_cache() ? "with" : "without"
+withblas = TensorContractionsXD.use_blas() ? "with" : "without"
+withcache = TensorContractionsXD.use_cache() ? "with" : "without"
 @testset "Index Notation $withblas BLAS and $withcache cache" begin
     t0 = time()
     A = randn(Float64, (3,5,4,6))
@@ -9,10 +9,10 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
     C1 = permutedims(A, p)
     @tensor C2[4,1,3,2] := A[1,2,3,4]
     @test C1 ≈ C2
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor C[1,2,3,4] := A[1,2,3]
     end
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor C[1,2,3,4] := A[1,2,2,4]
     end
     println("tensorcopy: $(time()-t0) seconds")
@@ -58,7 +58,7 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
         C2[a, g, e, d, f] += A[a, b, c, d, e] * B[c, f, b, g]
     end
     @test C1 ≈ C2
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor A[a, b, c, d] * B[c, f, b, g]
     end
     println("tensorcontract 1: $(time()-t0) seconds")
@@ -69,7 +69,7 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
     @tensor C1[1,2,5,6,3,4,7,8] := A[1,2,3,4] * B[5,6,7,8]
     C2=reshape(kron(reshape(B, (25,25)), reshape(A, (25,25))), (5,5,5,5,5,5,5,5))
     @test C1 ≈ C2
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor C[a, b, c, d, e, f, g, i] := A[a, b, c, d] * B[e, f, g, h]
     end
     println("tensorcontract 2: $(time()-t0) seconds")
@@ -110,13 +110,13 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
     @tensor C[3,1,4,2] = A[1,2,3,4]
     @tensor Ccopy[3,1,4,2] = Acopy[1,2,3,4]
     @test C ≈ Ccopy
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor C[3,1,4,2] = A[1,2,3]
     end
     @test_throws DimensionMismatch begin
         @tensor C[3,1,4,2] = A[3,1,4,2]
     end
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor C[1,1,2,3] = A[1,2,3,4]
     end
     println("views: $(time()-t0) seconds")
@@ -131,13 +131,13 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
     @tensor C[3,1,4,2] = β * C[3,1,4,2] + α * A[1,2,3,4]
     Ccopy=β * Ccopy+α * Acopy
     @test C ≈ Ccopy
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor C[3,1,4,2] = 0.5 * C[3,1,4,2] + 1.2 * A[1,2,3]
     end
     @test_throws DimensionMismatch  begin
         @tensor C[3,1,4,2] = 0.5 * C[3,1,4,2] + 1.2 * A[3,1,2,4]
     end
-    @test_throws TensorOperationsXD.IndexError  begin
+    @test_throws TensorContractionsXD.IndexError  begin
         @tensor C[1,1,2,3] = 0.5 * C[1,1,2,3] + 1.2 * A[1,2,3,4]
     end
     println("more views: $(time()-t0) seconds")
@@ -155,13 +155,13 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
         Bcopy += α * view(A, i, :, :, i)
     end
     @test B ≈ Bcopy
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor B[b, c] += α * A[a, b, c]
     end
     @test_throws DimensionMismatch begin
         @tensor B[c, b] += α * A[a, b, c, a]
     end
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor B[c, b] += α * A[a, b, a, a]
     end
     @test_throws DimensionMismatch begin
@@ -200,13 +200,13 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
     end
     @tensor C[d, a, e] += α * A[a, b, c, d] * conj(B[c, e, b])
     @test C ≈ Ccopy
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor C[d, a, e] += α * A[a, b, c, a] * B[c, e, b]
     end
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor C[d, a, e] += α * A[a, b, c, d] * B[c, b]
     end
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @tensor C[d, e] += α * A[a, b, c, d] * B[c, e, b]
     end
     @test_throws DimensionMismatch begin
@@ -280,7 +280,7 @@ withcache = TensorOperationsXD.use_cache() ? "with" : "without"
         @tensoropt ((a,d)=>χ,b=>χ^2,(c,f)=>2*χ,e=>5) D3[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
         @tensoropt ((a,d)=χ,b=χ^2,(c,f)=2*χ,e=5) D4[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]
         @test D1 == D2 == D3 == D4
-        _optdata = optex -> TensorOperationsXD.optdata(optex, :(D1[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]))
+        _optdata = optex -> TensorContractionsXD.optdata(optex, :(D1[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]))
         optex1 = :((a=>χ,b=>χ^2,c=>2*χ,d=>χ,e=>5,f=>2*χ))
         optex2 = :((a=χ,b=χ^2,c=2*χ,d=χ,e=5,f=2*χ))
         optex3 = :(((a,d)=>χ,b=>χ^2,(c,f)=>2*χ,e=>5))

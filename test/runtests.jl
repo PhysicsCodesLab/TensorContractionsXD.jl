@@ -1,23 +1,23 @@
 using Test
-using TensorOperationsXD
+using TensorContractionsXD
 using Random
 using LinearAlgebra
 using CUDA
 
 Random.seed!(1234567)
 
-TensorOperationsXD.enable_blas()
-TensorOperationsXD.enable_cache()
+TensorContractionsXD.enable_blas()
+TensorContractionsXD.enable_cache()
 include("methods.jl")
 include("tensor.jl")
-TensorOperationsXD.disable_cache()
+TensorContractionsXD.disable_cache()
 include("methods.jl")
 include("tensor.jl")
-TensorOperationsXD.disable_blas()
+TensorContractionsXD.disable_blas()
 include("methods.jl")
 include("tensor.jl")
-TensorOperationsXD.enable_blas()
-TensorOperationsXD.enable_cache()
+TensorContractionsXD.enable_blas()
+TensorContractionsXD.enable_cache()
 
 if CUDA.functional()
     include("cutensor.jl")

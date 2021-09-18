@@ -5,10 +5,10 @@
     @cutensor C1[4,1,3,2] := A[1,2,3,4]
     C2 = permutedims(A, p)
     @test collect(C1) ≈ C2
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @cutensor C[1,2,3,4] := A[1,2,3]
     end
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @cutensor C[1,2,3,4] := A[1,2,2,4]
     end
     println("tensorcopy: $(time()-t0) seconds")
@@ -55,7 +55,7 @@
         C2[a, g, e, d, f] += A[a, b, c, d, e] * B[c, f, b, g]
     end
     @test collect(C1) ≈ C2
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @cutensor A[a, b, c, d] * B[c, f, b, g]
     end
     println("tensorcontract 1: $(time()-t0) seconds")
@@ -66,7 +66,7 @@
     # @cutensor C1[1,2,5,6,3,4,7,8] := A[1,2,3,4] * B[5,6,7,8]
     # C2=reshape(kron(reshape(B, (25,25)), reshape(A, (25,25))), (5,5,5,5,5,5,5,5))
     # @test C1 ≈ C2
-    @test_throws TensorOperationsXD.IndexError begin
+    @test_throws TensorContractionsXD.IndexError begin
         @cutensor C[a, b, c, d, e, f, g, i] := A[a, b, c, d] * B[e, f, g, h]
     end
     println("tensorcontract 2: $(time()-t0) seconds")

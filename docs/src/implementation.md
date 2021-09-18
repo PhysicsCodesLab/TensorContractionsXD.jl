@@ -56,7 +56,7 @@ a flag (`Bool`) that indicates whether the object needs to be conjugated (`true`
 (`false`).
 
 The file
-[`src/indexnotation/verifiers.jl`](https://github.com/PhysicsCodesLab/TensorOperationsXD.jl/blob/master/src/indexnotation/varifiers.jl)
+[`src/indexnotation/verifiers.jl`](https://github.com/PhysicsCodesLab/TensorContractionsXD.jl/blob/master/src/indexnotation/varifiers.jl)
 also contains simple methods to detect assignment (`isassignment`) into existing objects
 (i.e. `=`, `+=` and `-=`) or so-called definitions (`isdefinition`), that create a new
 object (via `:=` or its Unicode variant `≔`, obtained as `\coloneq + TAB`). The function
@@ -75,7 +75,7 @@ The latter is used to analyze complete tensor contraction graphs.
 Actual processing of the complete expression that follows the `@tensor` macro and converting
 it into a list of actual calls to the primitive tensor operations is handled by the
 functions defined in
-[`src/indexnotation/tensormacro.jl`](https://github.com/Jutho/TensorOperationsXD.jl/blob/master/src/indexnotation/tensormacro.jl).
+[`src/indexnotation/tensormacro.jl`](https://github.com/Jutho/TensorContractionsXD.jl/blob/master/src/indexnotation/tensormacro.jl).
 The integral expression received by the `@tensor` macro is passed on to the `tensorify`
 function. The `@tensoropt` macro will first generate the data required to optimize
 contraction order, by calling `optdata`. If no actual costs are specified, i.e. `@tensoropt`
@@ -131,15 +131,15 @@ right. There is one exception, which is that if the indices follow the NCON conv
 negative integers are used for uncontracted indices and positive integers for contracted
 indices. Then the contraction tree is built such that tensors that share the contraction
 index which is the lowest positive integer are contracted first. Relevant code can be found
-in [`src/indexnotation/ncontree.jl`](https://github.com/Jutho/TensorOperationsXD.jl/blob/master/src/indexnotation/ncontree.jl)
+in [`src/indexnotation/ncontree.jl`](https://github.com/Jutho/TensorContractionsXD.jl/blob/master/src/indexnotation/ncontree.jl)
 
 When the `@tensoropt` macro was used, `optdata` is a dictionary associating a cost (either a
 number or a polynomial in some abstract scaling parameter) to every index, and this
 information is used to determine the (asymptotically) optimal contraction tree (in terms of
 number of floating point operations). The code for the latter is in
-[`src/indexnotation/optimaltree.jl`](https://github.com/Jutho/TensorOperationsXD.jl/blob/master/src/indexnotation/optimaltree.jl),
+[`src/indexnotation/optimaltree.jl`](https://github.com/Jutho/TensorContractionsXD.jl/blob/master/src/indexnotation/optimaltree.jl),
 with the lightweight polynomial implementation in
-[`src/indexnotation/polynomial.jl`](https://github.com/Jutho/TensorOperationsXD.jl/blob/master/src/indexnotation/poly.jl).
+[`src/indexnotation/polynomial.jl`](https://github.com/Jutho/TensorContractionsXD.jl/blob/master/src/indexnotation/poly.jl).
 Aside from a generic polynomial type `Poly`, the latter also contains a `Power` type which
 represents a single term of a polynomial (i.e. a scalar coefficient and an exponent). This
 type is closed under multiplication, and can be multiplied much more efficiently. Only under
@@ -154,15 +154,15 @@ thereof, and certain reshape operations. This includes certain arrays that can o
 determined to be strided on runtime, and does therefore not coincide with the type union
 `StridedArray` from Julia Base. In fact, the methods accept `AbstractArray` objects, but
 convert these to `(Unsafe)StridedView` objects from the package
-[Strided.jl](https://github.com/Jutho/Strided.jl), and we refer to this package for a more
+[Strided.jl](https://github.com/Jutho/StridedTensorXD.jl), and we refer to this package for a more
 detailed discussion on which arrays are supported and why.
 
 The primitive tensor operations are captured by the following mutating methods (note that these are not exported)
 
 ```@docs
-TensorOperationsXD.add!
-TensorOperationsXD.trace!
-TensorOperationsXD.contract!
+TensorContractionsXD.add!
+TensorContractionsXD.trace!
+TensorContractionsXD.contract!
 ```
 
 These are the central objects that should be overloaded by custom tensor types that would
@@ -175,7 +175,7 @@ In order to reuse temporary objects stored in the global cache, this method also
 candidate similar object, which it can return if it matches the requirements.
 
 ```@docs
-TensorOperationsXD.checked_similar_from_indices
+TensorContractionsXD.checked_similar_from_indices
 ```
 
 Note that the type of the cached object is not known to the compiler, as the cache stores
@@ -188,12 +188,12 @@ single entry of an object with zero indices, i.e. an instance of `AbstractArray{
 case of Julia Base arrays:
 
 ```@docs
-TensorOperationsXD.scalar
+TensorContractionsXD.scalar
 ```
 
-The implementation of all of these methods can be found in [`src/implementation/stridedarray.jl`](https://github.com/Jutho/TensorOperationsXD.jl/blob/master/src/implementation/stridedarray.jl).
+The implementation of all of these methods can be found in [`src/implementation/stridedarray.jl`](https://github.com/Jutho/TensorContractionsXD.jl/blob/master/src/implementation/stridedarray.jl).
 
 By implementing these five methods for other types that represent some kind of tensor or
 multidimensional object, they can be used in combination with the `@tensor` macro. In
 particular, we also provide basic support for contracting a `Diagonal` matrix with an
-arbitrary strided array in [`src/implementation/diagonal.jl`](https://github.com/Jutho/TensorOperationsXD.jl/blob/master/src/implementation/diagonal.jl).
+arbitrary strided array in [`src/implementation/diagonal.jl`](https://github.com/Jutho/TensorContractionsXD.jl/blob/master/src/implementation/diagonal.jl).

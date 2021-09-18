@@ -24,10 +24,10 @@ function contract!(α, A::AbstractArray, CA::Symbol, B::Diagonal, CB::Symbol,
         indCinoAB::IndexTuple, syms::Union{Nothing, NTuple{3,Symbol}} = nothing)
 
     pA = (oindA...,cindA...)
-    (length(pA) == ndims(A) && TupleTools.isperm(pA)) ||
+    (length(pA) == ndims(A) && TupleLabXD.isperm(pA)) ||
         throw(IndexError("invalid permutation of length $(ndims(A)): $pA"))
     pB = (oindB...,cindB...)
-    (length(pB) == ndims(B) && TupleTools.isperm(pB)) ||
+    (length(pB) == ndims(B) && TupleLabXD.isperm(pB)) ||
         throw(IndexError("invalid permutation of length $(ndims(B)): $pB"))
     (length(oindA) + length(oindB) == ndims(C)) ||
         throw(IndexError("non-matching output indices in contraction"))
@@ -82,24 +82,24 @@ function _contract!(α, A::UnsafeStridedView, Bd::UnsafeStridedView,
 
     if length(oindB) == 1 # length(cindA) == length(cindB) == 1
         A2 = permutedims(A, (oindA..., cindA...))
-        C2 = permutedims(C, TupleTools.invperm(indCinoAB))
+        C2 = permutedims(C, TupleLabXD.invperm(indCinoAB))
         B2 = sreshape(Bd, ((one.(osizeA))..., csizeA...))
         totsize = (osizeA..., csizeA...)
         if α != 1
             if β == 0
-                Strided._mapreducedim!((x,y)->α*x*y, +, zero, totsize, (C2, A2, B2))
+                StridedTensorXD._mapreducedim!((x,y)->α*x*y, +, zero, totsize, (C2, A2, B2))
             elseif β == 1
-                Strided._mapreducedim!((x,y)->α*x*y, +, nothing, totsize, (C2, A2, B2))
+                StridedTensorXD._mapreducedim!((x,y)->α*x*y, +, nothing, totsize, (C2, A2, B2))
             else
-                Strided._mapreducedim!((x,y)->α*x*y, +, y->β*y, totsize, (C2, A2, B2))
+                StridedTensorXD._mapreducedim!((x,y)->α*x*y, +, y->β*y, totsize, (C2, A2, B2))
             end
         else
             if β == 0
-                return Strided._mapreducedim!(*, +, zero, totsize, (C2, A2, B2))
+                return StridedTensorXD._mapreducedim!(*, +, zero, totsize, (C2, A2, B2))
             elseif β == 1
-                Strided._mapreducedim!(*, +, nothing, totsize, (C2, A2, B2))
+                StridedTensorXD._mapreducedim!(*, +, nothing, totsize, (C2, A2, B2))
             else
-                Strided._mapreducedim!(*, +, y->β*y, totsize, (C2, A2, B2))
+                StridedTensorXD._mapreducedim!(*, +, y->β*y, totsize, (C2, A2, B2))
             end
         end
     elseif length(oindB) == 0
@@ -108,23 +108,23 @@ function _contract!(α, A::UnsafeStridedView, Bd::UnsafeStridedView,
         totsize = (osizeA..., csizeA[1])
         A2 = UnsafeStridedView(A.ptr, totsize, newstrides, A.offset, A.op)
         B2 = sreshape(Bd, ((one.(osizeA))..., csizeA[1]))
-        C2 = permutedims(C, TupleTools.invperm(indCinoAB))
+        C2 = permutedims(C, TupleLabXD.invperm(indCinoAB))
 
         if α != 1
             if β == 0
-                Strided._mapreducedim!((x,y)->α*x*y, +, zero, totsize, (C2, A2, B2))
+                StridedTensorXD._mapreducedim!((x,y)->α*x*y, +, zero, totsize, (C2, A2, B2))
             elseif β == 1
-                Strided._mapreducedim!((x,y)->α*x*y, +, nothing, totsize, (C2, A2, B2))
+                StridedTensorXD._mapreducedim!((x,y)->α*x*y, +, nothing, totsize, (C2, A2, B2))
             else
-                Strided._mapreducedim!((x,y)->α*x*y, +, y->β*y, totsize, (C2, A2, B2))
+                StridedTensorXD._mapreducedim!((x,y)->α*x*y, +, y->β*y, totsize, (C2, A2, B2))
             end
         else
             if β == 0
-                return Strided._mapreducedim!(*, +, zero, totsize, (C2, A2, B2))
+                return StridedTensorXD._mapreducedim!(*, +, zero, totsize, (C2, A2, B2))
             elseif β == 1
-                Strided._mapreducedim!(*, +, nothing, totsize, (C2, A2, B2))
+                StridedTensorXD._mapreducedim!(*, +, nothing, totsize, (C2, A2, B2))
             else
-                Strided._mapreducedim!(*, +, y->β*y, totsize, (C2, A2, B2))
+                StridedTensorXD._mapreducedim!(*, +, y->β*y, totsize, (C2, A2, B2))
             end
         end
     else # length(oindB) == 2
@@ -132,7 +132,7 @@ function _contract!(α, A::UnsafeStridedView, Bd::UnsafeStridedView,
             rmul!(C, β)
         end
         A2 = sreshape(permutedims(A, (oindA..., cindA...)), (osizeA..., 1))
-        C2 = permutedims(C, TupleTools.invperm(indCinoAB))
+        C2 = permutedims(C, TupleLabXD.invperm(indCinoAB))
         B2 = sreshape(Bd, ((one.(osizeA))..., length(Bd)))
 
         sC = strides(C2)
@@ -141,9 +141,9 @@ function _contract!(α, A::UnsafeStridedView, Bd::UnsafeStridedView,
 
         C3 = UnsafeStridedView(C2.ptr, totsize, newstrides, C2.offset, C2.op)
         if α != 1
-            Strided._mapreducedim!((x,y)->α*x*y, +, nothing, totsize, (C3, A2, B2))
+            StridedTensorXD._mapreducedim!((x,y)->α*x*y, +, nothing, totsize, (C3, A2, B2))
         else
-            Strided._mapreducedim!(*, +, nothing, totsize, (C3, A2, B2))
+            StridedTensorXD._mapreducedim!(*, +, nothing, totsize, (C3, A2, B2))
         end
     end
     return C

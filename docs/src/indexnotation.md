@@ -10,7 +10,7 @@ Einstein's summation convention).
  This can most easily be explained using a simple example:
 
 ```julia
-using TensorOperationsXD
+using TensorContractionsXD
 α=randn()
 A=randn(5,5,5,5,5,5)
 B=randn(5,5,5)
@@ -50,12 +50,12 @@ including using multiple subsequent primes.
 ```
 
 The index pattern is analyzed at compile time and expanded to a set of calls to the basic
-tensor operations, i.e. [`TensorOperationsXD.add!`](@ref), [`TensorOperationsXD.trace!`](@ref)
-and [`TensorOperationsXD.contract!`](@ref). Temporaries are created where necessary, but will
+tensor operations, i.e. [`TensorContractionsXD.add!`](@ref), [`TensorContractionsXD.trace!`](@ref)
+and [`TensorContractionsXD.contract!`](@ref). Temporaries are created where necessary, but will
 by default be saved to a global cache, so that they can be reused upon a next iteration or
 next call to the function in which the `@tensor` call is used. When experimenting in the
 REPL where every tensor expression is only used a single time, it might be better to use
-[`TensorOperationsXD.disable_cache`](@ref), though no real harm comes from using the cache (except higher
+[`TensorContractionsXD.disable_cache`](@ref), though no real harm comes from using the cache (except higher
 memory usage). By default, the cache is allowed to take up to the minimum of either one
 gigabyte or 25% of the total machine memory, though this is fully configurable. We refer to
 the section on [Cache for temporaries](@ref) for further details.
@@ -148,7 +148,7 @@ Tensor network practicioners are probably more familiar with the network contrac
 function `ncon` to perform a tensor network contraction, as e.g. described in
 [NCON](https://arxiv.org/abs/1402.0939). In particular, a graphical application
 [TensorTrace](https://www.tensortrace.com) was recently introduced to facilitate the
-generation of such `ncon` calls. TensorOperationsXD.jl now provides compatibility with this
+generation of such `ncon` calls. TensorContractionsXD.jl now provides compatibility with this
 interface by also exposing an `ncon` function with the same basic syntax
 ```julia
 ncon(list_of_tensor_objects, list_of_index_lists)
@@ -166,7 +166,7 @@ this can result in some overhead (though that is typical negligable for anything
 small tensor contractions), is that `ncon` is type-unstable, i.e. its return type cannot be
 inferred by the Julia compiler.
 
-The full call syntax of the `ncon` method exposed by TensorOperationsXD.jl is
+The full call syntax of the `ncon` method exposed by TensorContractionsXD.jl is
 ```julia
 ncon(tensorlist, indexlist, [conjlist, sym]; order = ..., output = ...)
 ```
@@ -278,7 +278,7 @@ make the interaction with the cache hurtful rather than advantageous.
 Every index expression will be evaluated as a sequence of elementary tensor operations,
 i.e. permuted additions, partial traces and contractions, which are implemented for strided
 arrays as discussed in [Package features](@ref). In particular, these implementations rely
-on [Strided.jl](https://github.com/Jutho/Strided.jl), and we refer to this package for a
+on [StridedTensorXD.jl](https://github.com/Jutho/StridedTensorXD.jl), and we refer to this package for a
 full specification of which arrays are supported. As a rule of thumb, `Array`s from Julia
 base, as well as `view`s thereof if sliced with a combination of `Integer`s and `Range`s.
 Special types such as `Adjoint` and `Transpose` from Base are also supported. For permuted
@@ -295,7 +295,7 @@ on `JULIA_NUM_THREADS>1`). This implementation can sometimes be faster even for 
 types, and the use of BLAS can be disabled globally by calling `disable_blas()`. It is
 currently not possible to control the use of BLAS at the level of individual contractions.
 
-Since TensorOperationsXD v2.0, the necessary implementations are also available for `CuArray`
+Since TensorContractionsXD v2.0, the necessary implementations are also available for `CuArray`
 objects of the [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl) library. This
 implementation is essentially a simple wrapper over the CUTENSOR library of NVidia, and as
 such has certain restrictions as a result thereof. Native Julia alternatives using

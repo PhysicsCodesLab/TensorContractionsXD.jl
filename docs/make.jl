@@ -1,16 +1,16 @@
-using TensorOperationsXD
+using TensorContractionsXD
 using Documenter
 
-DocMeta.setdocmeta!(TensorOperationsXD, :DocTestSetup, :(using TensorOperationsXD); recursive=true)
+DocMeta.setdocmeta!(TensorContractionsXD, :DocTestSetup, :(using TensorContractionsXD); recursive=true)
 
 makedocs(;
-    modules=[TensorOperationsXD],
+    modules=[TensorContractionsXD],
     authors="PhysicsCodesLab",
-    repo="https://github.com/PhysicsCodesLab/TensorOperationsXD.jl/blob/{commit}{path}#{line}",
-    sitename="TensorOperationsXD.jl",
+    repo="https://github.com/PhysicsCodesLab/TensorContractionsXD.jl/blob/{commit}{path}#{line}",
+    sitename="TensorContractionsXD.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://PhysicsCodesLab.github.io/TensorOperationsXD.jl",
+        canonical="https://PhysicsCodesLab.github.io/TensorContractionsXD.jl",
         assets=String[],
     ),
     pages = [
@@ -23,6 +23,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/PhysicsCodesLab/TensorOperationsXD.jl",
+    repo="github.com/PhysicsCodesLab/TensorContractionsXD.jl",
     devbranch="master",
 )

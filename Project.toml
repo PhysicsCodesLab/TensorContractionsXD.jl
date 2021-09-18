@@ -1,4 +1,4 @@
-name = "TensorOperationsXD"
+name = "TensorContractionsXD"
 uuid = "2200dae6-05f0-40f4-9fe9-6ee0acf43bbd"
 authors = ["PhysicsCodesLab"]
 version = "0.1.0"
@@ -9,15 +9,12 @@ LRUCache = "8ac3fa9e-de4c-5943-b1dc-09c6b5f20637"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
-Strided = "5e0ebb24-38b0-5f93-81fe-25c709ecae67"
-TupleTools = "9d95972d-f1c8-5527-a6e0-b4b365fa01f6"
+StridedTensorXD = "264d0366-5c21-4846-9aa6-f0da616294d5"
+TupleLabXD = "dd89015c-70e0-43f5-a84b-ae32a3a24356"
 
 [compat]
-CUDA = "1,2,3"
 LRUCache = "1"
 Requires = "0.5,1"
-Strided = "1"
-TupleTools = "1.1"
 julia = "1.6"
 
 [extras]

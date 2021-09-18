@@ -1,6 +1,6 @@
 @testset "macro methods" begin
     @testset "tensorexpressions" begin
-        using TensorOperationsXD: isassignment, isdefinition, getlhs, getrhs, isindex,
+        using TensorContractionsXD: isassignment, isdefinition, getlhs, getrhs, isindex,
             istensor, isgeneraltensor, istensorexpr, isscalarexpr, hastraceindices,
             hastraceindices, getindices, getallindices,
             normalizeindex, instantiate_scalar, instantiate_eltype,
@@ -92,7 +92,7 @@
     end
 
     @testset "parsecost" begin
-        using TensorOperationsXD: parsecost, Power
+        using TensorContractionsXD: parsecost, Power
         @test parsecost(:(3/5)) === 3/5
         @test parsecost(:(5+2)) === 5+2
         @test parsecost(:(Int128(2*8))) === Int128(2*8)
@@ -114,21 +114,21 @@ end
         I = intersect(A,B)
         S = setdiff(A,B)
 
-        A2 = TensorOperationsXD.storeset(T, A, maxint)
-        B2 = TensorOperationsXD.storeset(T, B, maxint)
-        U2 = TensorOperationsXD.storeset(T, U, maxint)
-        I2 = TensorOperationsXD.storeset(T, I, maxint)
-        S2 = TensorOperationsXD.storeset(T, S, maxint)
+        A2 = TensorContractionsXD.storeset(T, A, maxint)
+        B2 = TensorContractionsXD.storeset(T, B, maxint)
+        U2 = TensorContractionsXD.storeset(T, U, maxint)
+        I2 = TensorContractionsXD.storeset(T, I, maxint)
+        S2 = TensorContractionsXD.storeset(T, S, maxint)
 
-        @test TensorOperationsXD._union(A2, B2) == U2
-        @test TensorOperationsXD._intersect(A2, B2) == I2
-        @test TensorOperationsXD._setdiff(A2, B2) == S2
-        @test TensorOperationsXD._isemptyset(TensorOperationsXD.storeset(T, [], maxint))
-        @test !TensorOperationsXD._isemptyset(TensorOperationsXD.storeset(T, [1], maxint))
+        @test TensorContractionsXD._union(A2, B2) == U2
+        @test TensorContractionsXD._intersect(A2, B2) == I2
+        @test TensorContractionsXD._setdiff(A2, B2) == S2
+        @test TensorContractionsXD._isemptyset(TensorContractionsXD.storeset(T, [], maxint))
+        @test !TensorContractionsXD._isemptyset(TensorContractionsXD.storeset(T, [1], maxint))
     end
 
     @testset "poly" begin
-        using TensorOperationsXD: Power, degree, Poly
+        using TensorContractionsXD: Power, degree, Poly
         x = Power{:x}(1,1)
         x⁰ = Power{:x}(1,0)
         x⁵= Power{:x}(1,5)

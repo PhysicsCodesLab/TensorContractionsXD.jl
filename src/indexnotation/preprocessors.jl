@@ -165,12 +165,12 @@ julia> ex = :(A[a,b] := B[a,c,f]*C[c,b,f])
 :($(Expr(:(:=), :(A[a, b]), :(B[a, c, f] * C[c, b, f]))))
 julia> TO.extracttensorobjects(ex)
 quote
-    #= /Users/xdong/.julia/packages/TensorOperationsXD/oHgFV/src/indexnotation/preprocessors.jl:160 =# @notensor begin
+    #= /Users/xdong/.julia/packages/TensorContractionsXD/oHgFV/src/indexnotation/preprocessors.jl:160 =# @notensor begin
             var"##266" = B
             var"##267" = C
         end
     $(Expr(:(:=), :(var"##268"[a, b]), :(var"##266"[a, c, f] * var"##267"[c, b, f])))
-    #= /Users/xdong/.julia/packages/TensorOperationsXD/oHgFV/src/indexnotation/preprocessors.jl:161 =# @notensor begin
+    #= /Users/xdong/.julia/packages/TensorContractionsXD/oHgFV/src/indexnotation/preprocessors.jl:161 =# @notensor begin
             A = var"##268"
         end
 end
