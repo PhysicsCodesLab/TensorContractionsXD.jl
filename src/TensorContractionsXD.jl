@@ -11,7 +11,6 @@ using Requires
 import Base.tail
 
 # Exports
-#---------
 # export macro API
 export @tensor, @tensoropt, @tensoropt_verbose, @optimalcontractiontree, @notensor, @ncon
 export @cutensor
