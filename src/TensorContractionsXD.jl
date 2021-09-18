@@ -1,4 +1,4 @@
-module TensorOperationsXD
+module TensorContractionsXD
 
 using TupleLabXD
 using StridedTensorXD
