@@ -13,7 +13,6 @@ StridedTensorXD = "264d0366-5c21-4846-9aa6-f0da616294d5"
 TupleLabXD = "dd89015c-70e0-43f5-a84b-ae32a3a24356"
 
 [compat]
-CUDA = "1-2"
 LRUCache = "1"
 Requires = "0.5,1"
 julia = "1.6"
